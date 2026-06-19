@@ -220,7 +220,7 @@
 
   <!-- Scripts -->
   <script type="module">
-    import { db, collection, doc, setDoc, getDocs, query, where, serverTimestamp } from "./firebase.js";
+    import { db, collection, doc, setDoc, getDocs, updateDoc, query, where, serverTimestamp } from "./firebase.js";
     import { showToast, generateCaptcha, calculateEstimatedWaitTime } from "./app.js";
 
     let activeCaptcha = { question: "", answer: "" };
@@ -362,14 +362,28 @@
         const today = new Date();
         today.setHours(0,0,0,0);
 
-        // 1. Generate 4-digit OPD token
-        // Query patient count registered today to generate next serial token
+        // 1. Generate 3-digit non-sequential OPD token (unique for today)
         const qTodayPatients = query(collection(db, "patients"), where("createdAt", ">=", today));
         const todayPatientsSnap = await getDocs(qTodayPatients);
-        const nextNumber = todayPatientsSnap.size + 1;
-        const generatedToken = (1000 + nextNumber).toString();
+        
+        let generatedToken = "";
+        let isUnique = false;
+        let attempts = 0;
+        while (!isUnique && attempts < 50) {
+          const randNum = Math.floor(Math.random() * 900) + 100; // 100 to 999
+          const candToken = randNum.toString();
+          const exists = todayPatientsSnap.docs.some(doc => doc.data().token === candToken);
+          if (!exists) {
+            generatedToken = candToken;
+            isUnique = true;
+          }
+          attempts++;
+        }
+        if (!isUnique) {
+          generatedToken = (Math.floor(Math.random() * 900) + 100).toString(); // fallback
+        }
 
-        // 2. Queue Load Balancing & Auto Doctor Assignment
+        // 2. Queue Load Balancing & Auto Doctor Assignment (Capacity threshold of 5 patients)
         const qDoctors = query(
           collection(db, "users"),
           where("role", "==", "doctor"),
@@ -393,7 +407,7 @@
             });
           });
 
-          // Fetch all patients today and filter in-memory to avoid composite index requirements
+          // Fetch all patients today and filter in-memory to count queues
           const qActivePatients = query(
             collection(db, "patients"),
             where("createdAt", ">=", today)
@@ -410,11 +424,38 @@
             }
           });
 
-          // Sort by lowest queue size (load balancing)
-          doctorsQueueInfo.sort((a, b) => a.queueCount - b.queueCount);
-          assignedDoctorId = doctorsQueueInfo[0].id;
-          assignedDoctorName = doctorsQueueInfo[0].name;
-          pendingQueueCount = doctorsQueueInfo[0].queueCount;
+          // Check if any doctor has reached or exceeded 5 active patients. If so, flag them as 'busy' in Firestore.
+          const availableDoctorsWithCapacity = [];
+          for (const dInfo of doctorsQueueInfo) {
+            if (dInfo.queueCount >= 5) {
+              try {
+                await updateDoc(doc(db, "users", dInfo.id), { availability: "busy" });
+                showToast(`Dr. ${dInfo.name} is now flagged as BUSY (Queue reached limit).`, "info");
+              } catch (err) {
+                console.error("Error setting doctor to busy:", err);
+              }
+            } else {
+              availableDoctorsWithCapacity.push(dInfo);
+            }
+          }
+
+          if (availableDoctorsWithCapacity.length > 0) {
+            // Sort by lowest queue size (load balancing) among those with capacity
+            availableDoctorsWithCapacity.sort((a, b) => a.queueCount - b.queueCount);
+            assignedDoctorId = availableDoctorsWithCapacity[0].id;
+            assignedDoctorName = availableDoctorsWithCapacity[0].name;
+            pendingQueueCount = availableDoctorsWithCapacity[0].queueCount;
+
+            // If the assigned doctor reaches 5 patients with this new assignment, flag them as 'busy' in Firestore
+            if (pendingQueueCount + 1 >= 5) {
+              try {
+                await updateDoc(doc(db, "users", assignedDoctorId), { availability: "busy" });
+                showToast(`Dr. ${assignedDoctorName} is now flagged as BUSY (Queue reached limit).`, "info");
+              } catch (err) {
+                console.error("Error setting doctor to busy:", err);
+              }
+            }
+          }
         }
 
         // 3. Write Patient to Firestore with dynamic reference doc id
