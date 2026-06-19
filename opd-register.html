@@ -339,19 +339,20 @@
             });
           });
 
-          // Fetch all patients today who are in 'pending' or 'in-consultation' status
+          // Fetch all patients today and filter in-memory to avoid composite index requirements
           const qActivePatients = query(
             collection(db, "patients"),
-            where("createdAt", ">=", today),
-            where("status", "in", ["pending", "in-consultation"])
+            where("createdAt", ">=", today)
           );
           const activePatientsSnap = await getDocs(qActivePatients);
           
           activePatientsSnap.forEach(patSnap => {
             const patData = patSnap.data();
-            const doctorMatch = doctorsQueueInfo.find(doc => doc.id === patData.assignedDoctorId);
-            if (doctorMatch) {
-              doctorMatch.queueCount++;
+            if (patData.status === "pending" || patData.status === "in-consultation") {
+              const doctorMatch = doctorsQueueInfo.find(doc => doc.id === patData.assignedDoctorId);
+              if (doctorMatch) {
+                doctorMatch.queueCount++;
+              }
             }
           });
 
