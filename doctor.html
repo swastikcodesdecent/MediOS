@@ -297,20 +297,24 @@
 
     // Start Patient real-time queues
     function syncDoctorQueue() {
-      // Listen to today's registrations assigned to this doctor
+      // Listen to all registrations assigned to this doctor and filter in memory by date
       const today = new Date();
       today.setHours(0,0,0,0);
       
       const q = query(
         collection(db, "patients"),
-        where("createdAt", ">=", today),
         where("assignedDoctorId", "==", activeDoctorId)
       );
 
       onSnapshot(q, (snapshot) => {
         localPatients = [];
         snapshot.forEach(docSnap => {
-          localPatients.push({ id: docSnap.id, ...docSnap.data() });
+          const data = docSnap.data();
+          const createdTime = data.createdAt ? (data.createdAt.toDate ? data.createdAt.toDate() : new Date(data.createdAt)) : null;
+          // Only show today's patients
+          if (createdTime && createdTime >= today) {
+            localPatients.push({ id: docSnap.id, ...data });
+          }
         });
         renderQueue();
       });
