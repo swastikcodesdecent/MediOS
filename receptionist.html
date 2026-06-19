@@ -197,6 +197,7 @@
                   <select id="opd-dept" class="form-control" required>
                     <option value="" disabled selected>Select Department</option>
                   </select>
+                  <div id="recep-assigned-doctor-preview" style="margin-top: 8px; font-size: 13px; font-weight: 500; display: none; padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border); background-color: var(--bg-main);"></div>
                 </div>
 
                 <div class="form-group">
@@ -396,6 +397,47 @@
     document.getElementById("btn-close-assign-modal").addEventListener("click", () => assignModal.classList.remove("active"));
     document.getElementById("btn-cancel-assign-modal").addEventListener("click", () => assignModal.classList.remove("active"));
 
+    function updateRecepAssignedDoctorPreview(department) {
+      const previewDiv = document.getElementById("recep-assigned-doctor-preview");
+      if (!department) {
+        previewDiv.style.display = "none";
+        return;
+      }
+
+      previewDiv.style.display = "block";
+      
+      const matchingDoctors = localDoctors.filter(d => d.specialization === department && d.availability === "available");
+      
+      if (matchingDoctors.length === 0) {
+        previewDiv.innerHTML = `<span style="color: var(--warning-text);"><i class="fa-solid fa-triangle-exclamation"></i> No doctor currently available in this department.</span>`;
+        return;
+      }
+
+      const doctorsQueueInfo = matchingDoctors.map(d => {
+        const queueCount = localPatients.filter(p => p.assignedDoctorId === d.id && (p.status === "pending" || p.status === "in-consultation")).length;
+        return {
+          id: d.id,
+          name: d.name,
+          queueCount
+        };
+      });
+
+      // Filter out doctors who have already reached 5 patients
+      const availableDoctorsWithCapacity = doctorsQueueInfo.filter(d => d.queueCount < 5);
+
+      if (availableDoctorsWithCapacity.length > 0) {
+        availableDoctorsWithCapacity.sort((a, b) => a.queueCount - b.queueCount);
+        const chosenDoc = availableDoctorsWithCapacity[0];
+        previewDiv.innerHTML = `<span style="color: var(--success);"><i class="fa-solid fa-user-doctor"></i> Assigned Doctor: <strong>Dr. ${chosenDoc.name}</strong> (Queue: ${chosenDoc.queueCount} patients pending)</span>`;
+      } else {
+        previewDiv.innerHTML = `<span style="color: var(--warning-text);"><i class="fa-solid fa-triangle-exclamation"></i> All doctors in this department are currently busy. You will be queued.</span>`;
+      }
+    }
+
+    document.getElementById("opd-dept").addEventListener("change", (e) => {
+      updateRecepAssignedDoctorPreview(e.target.value);
+    });
+
     // Sync Data listeners
     function startListeners() {
       // 1. Departments
@@ -410,6 +452,11 @@
       onSnapshot(qDocs, (snapshot) => {
         localDoctors = [];
         snapshot.forEach(d => localDoctors.push({ id: d.id, ...d.data() }));
+
+        const activeDept = document.getElementById("opd-dept").value;
+        if (activeDept) {
+          updateRecepAssignedDoctorPreview(activeDept);
+        }
       });
 
       // 3. Patients (listen to today's patients)
@@ -424,6 +471,11 @@
         
         renderQueueKPIs();
         renderQueueTable();
+
+        const activeDept = document.getElementById("opd-dept").value;
+        if (activeDept) {
+          updateRecepAssignedDoctorPreview(activeDept);
+        }
       });
     }
 
@@ -771,6 +823,7 @@
         slipModal.classList.add("active");
 
         document.getElementById("recep-opd-form").reset();
+        document.getElementById("recep-assigned-doctor-preview").style.display = "none";
         populateDeptsDropdown();
       } catch (err) {
         console.error(err);
