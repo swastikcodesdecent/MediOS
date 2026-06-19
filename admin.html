@@ -806,27 +806,79 @@
         const today = new Date();
         today.setHours(0,0,0,0);
         
-        // 1. Token
-        const todayCount = localPatients.filter(p => {
-          const t = p.createdAt?.toDate ? p.createdAt.toDate() : new Date(p.createdAt);
-          return t >= today;
-        }).length;
-        const generatedToken = (1000 + todayCount + 1).toString();
+        // 1. Generate 3-digit non-sequential unique token (100-999)
+        let generatedToken = "";
+        let isUnique = false;
+        let attempts = 0;
+        while (!isUnique && attempts < 50) {
+          const randNum = Math.floor(Math.random() * 900) + 100; // 100 to 999
+          const candToken = randNum.toString();
+          const exists = localPatients.some(p => {
+            const t = p.createdAt?.toDate ? p.createdAt.toDate() : new Date(p.createdAt);
+            return t >= today && p.token === candToken;
+          });
+          if (!exists) {
+            generatedToken = candToken;
+            isUnique = true;
+          }
+          attempts++;
+        }
+        if (!isUnique) {
+          generatedToken = (Math.floor(Math.random() * 900) + 100).toString();
+        }
 
-        // 2. Doctor balancing
+        // 2. Doctor balancing with capacity check & busy flagging
         const departmentDoctors = localStaff.filter(s => s.role === "doctor" && s.specialization === department && s.availability === "available");
         
         let assignedDoctorId = null;
         let assignedDoctorName = null;
+        let pendingQueueCount = 0;
 
         if (departmentDoctors.length > 0) {
-          const docActiveCounts = departmentDoctors.map(d => {
-            const queueCount = localPatients.filter(p => p.assignedDoctorId === d.id && (p.status === "pending" || p.status === "in-consultation")).length;
-            return { ...d, queueCount };
+          const doctorsQueueInfo = departmentDoctors.map(d => {
+            const queueCount = localPatients.filter(p => {
+              const t = p.createdAt?.toDate ? p.createdAt.toDate() : new Date(p.createdAt);
+              return t >= today && p.assignedDoctorId === d.id && (p.status === "pending" || p.status === "in-consultation");
+            }).length;
+            return {
+              id: d.id,
+              name: d.name,
+              queueCount
+            };
           });
-          docActiveCounts.sort((a,b) => a.queueCount - b.queueCount);
-          assignedDoctorId = docActiveCounts[0].id;
-          assignedDoctorName = docActiveCounts[0].name;
+
+          // Check if any doctor has reached or exceeded 5 active patients. If so, flag them as 'busy' in Firestore.
+          const availableDoctorsWithCapacity = [];
+          for (const dInfo of doctorsQueueInfo) {
+            if (dInfo.queueCount >= 5) {
+              try {
+                await updateDoc(doc(db, "users", dInfo.id), { availability: "busy" });
+                showToast(`Dr. ${dInfo.name} is now flagged as BUSY (Queue reached limit).`, "info");
+              } catch (err) {
+                console.error("Error setting doctor to busy:", err);
+              }
+            } else {
+              availableDoctorsWithCapacity.push(dInfo);
+            }
+          }
+
+          if (availableDoctorsWithCapacity.length > 0) {
+            // Sort by lowest queue size (load balancing) among those with capacity
+            availableDoctorsWithCapacity.sort((a, b) => a.queueCount - b.queueCount);
+            assignedDoctorId = availableDoctorsWithCapacity[0].id;
+            assignedDoctorName = availableDoctorsWithCapacity[0].name;
+            pendingQueueCount = availableDoctorsWithCapacity[0].queueCount;
+
+            // If the assigned doctor reaches 5 patients with this new assignment, flag them as 'busy' in Firestore
+            if (pendingQueueCount + 1 >= 5) {
+              try {
+                await updateDoc(doc(db, "users", assignedDoctorId), { availability: "busy" });
+                showToast(`Dr. ${assignedDoctorName} is now flagged as BUSY (Queue reached limit).`, "info");
+              } catch (err) {
+                console.error("Error setting doctor to busy:", err);
+              }
+            }
+          }
         }
 
         // 3. Save
