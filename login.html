@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staff Login - MediOS</title>
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Core Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Toast Container for alerts -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <div class="auth-wrapper" id="login_wrapper">
+    <div class="auth-card" id="login_card">
+      <div class="auth-header">
+        <div class="auth-logo" id="login_logo">
+          <i class="fa-solid fa-square-h"></i>
+        </div>
+        <h2>MediOS Staff Portal</h2>
+        <p style="color: var(--text-muted); font-size: 14px;">Sign in to access your workflow panel</p>
+      </div>
+
+      <!-- Error banner inside Card -->
+      <div id="login-error-banner" style="display: none; background-color: var(--danger-light); color: var(--danger-text); padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 20px; border-left: 3px solid var(--danger);">
+        <i class="fa-solid fa-triangle-exclamation"></i> <span id="error-banner-text">Invalid credentials. Please try again.</span>
+      </div>
+
+      <form id="login-form">
+        <!-- Email Input -->
+        <div class="form-group">
+          <label for="login-email">Email Address</label>
+          <div style="position: relative;">
+            <i class="fa-solid fa-envelope" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px;"></i>
+            <input type="email" id="login-email" class="form-control" placeholder="staff@hospital.com" required style="padding-left: 40px;">
+          </div>
+        </div>
+
+        <!-- Password Input -->
+        <div class="form-group" style="margin-bottom: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label for="login-password" style="margin-bottom: 0;">Password</label>
+          </div>
+          <div style="position: relative;">
+            <i class="fa-solid fa-lock" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px;"></i>
+            <input type="password" id="login-password" class="form-control" placeholder="••••••••" required style="padding-left: 40px; padding-right: 40px;">
+            <button type="button" id="toggle-password" style="position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer;">
+              <i class="fa-solid fa-eye" id="toggle-password-icon"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" class="btn btn-primary btn-block" id="btn_submit_login">
+          <i class="fa-solid fa-arrow-right-to-bracket"></i> Authenticate Session
+        </button>
+      </form>
+      
+      <div style="text-align: center; margin-top: 24px;">
+        <a href="index.html" style="color: var(--text-muted); font-size: 13px; text-decoration: none;">
+          <i class="fa-solid fa-arrow-left"></i> Back to Public Page
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State Overlay -->
+  <div class="loading-overlay" id="loading-overlay" style="display: none;">
+    <div style="text-align: center;">
+      <div class="spinner"></div>
+      <p style="margin-top: 16px; font-weight: 500; color: var(--text-main);">Verifying authorization...</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db, doc, getDoc } from "./firebase.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { loginUser } from "./auth.js";
+    import { showToast } from "./app.js";
+
+    const loginForm = document.getElementById("login-form");
+    const emailInput = document.getElementById("login-email");
+    const passwordInput = document.getElementById("login-password");
+    const togglePasswordBtn = document.getElementById("toggle-password");
+    const togglePasswordIcon = document.getElementById("toggle-password-icon");
+    const loadingOverlay = document.getElementById("loading-overlay");
+    const errorBanner = document.getElementById("login-error-banner");
+    const errorBannerText = document.getElementById("error-banner-text");
+
+    // Toggle Password Visibility
+    togglePasswordBtn.addEventListener("click", () => {
+      if (passwordInput.type === "password") {
+        passwordInput.type = "text";
+        togglePasswordIcon.classList.remove("fa-eye");
+        togglePasswordIcon.classList.add("fa-eye-slash");
+      } else {
+        passwordInput.type = "password";
+        togglePasswordIcon.classList.remove("fa-eye-slash");
+        togglePasswordIcon.classList.add("fa-eye");
+      }
+    });
+
+    // Check if error query parameter exists in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const errorParam = urlParams.get("error");
+    if (errorParam) {
+      errorBanner.style.display = "block";
+      if (errorParam === "profile_missing") {
+        errorBannerText.innerText = "Authorized profile document not found in system database.";
+      } else if (errorParam === "unauthorized") {
+        errorBannerText.innerText = "Your account does not have permission to view that panel.";
+      } else if (errorParam === "system_error") {
+        errorBannerText.innerText = "System check failed. Please log in again.";
+      } else {
+        errorBannerText.innerText = "Session expired or authentication failed.";
+      }
+    }
+
+    // Check if user is already authenticated
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        // Find role and redirect
+        loadingOverlay.style.display = "flex";
+        try {
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          if (userDoc.exists()) {
+            const role = userDoc.data().role;
+            if (role === "admin") window.location.href = "admin.html";
+            else if (role === "receptionist") window.location.href = "receptionist.html";
+            else if (role === "doctor") window.location.href = "doctor.html";
+          }
+        } catch (err) {
+          console.error(err);
+        } finally {
+          loadingOverlay.style.display = "none";
+        }
+      }
+    });
+
+    // Form Submission
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorBanner.style.display = "none";
+      loadingOverlay.style.display = "flex";
+
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      try {
+        const { role } = await loginUser(email, password);
+        showToast("Access Authorized!", "success");
+        
+        // Redirect depending on user role
+        if (role === "admin") {
+          window.location.href = "admin.html";
+        } else if (role === "receptionist") {
+          window.location.href = "receptionist.html";
+        } else if (role === "doctor") {
+          window.location.href = "doctor.html";
+        } else {
+          throw new Error("Invalid role assigned.");
+        }
+      } catch (err) {
+        console.error(err);
+        errorBanner.style.display = "block";
+        errorBannerText.innerText = err.message || "Failed to log in. Please check credentials.";
+        showToast("Authentication Failed", "error");
+      } finally {
+        loadingOverlay.style.display = "none";
+      }
+    });
+  </script>
+
+</body>
+</html>

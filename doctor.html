@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Doctor Panel - MediOS</title>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Core Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Toast alerts -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <div class="app-container" id="doc_container">
+    
+    <!-- Sidebar -->
+    <aside class="sidebar" id="doc_sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <i class="fa-solid fa-heart-pulse"></i>
+          <span>MediOS Doctor</span>
+        </div>
+      </div>
+      <ul class="sidebar-menu">
+        <li class="sidebar-menu-item active" data-tab="section-queue">
+          <a><i class="fa-solid fa-people-group"></i> My Queue</a>
+        </li>
+      </ul>
+      <div class="sidebar-footer">
+        <div class="user-badge" id="doc_user_badge">
+          <div class="user-avatar" id="doc-avatar">D</div>
+          <div class="user-info">
+            <span class="user-name" id="doc-name">Doctor Name</span>
+            <span class="user-role" id="doc-specialization">Specialist</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content" id="doc_main_content">
+      
+      <!-- Top nav bar -->
+      <header class="top-bar" id="doc_top_bar">
+        <div class="page-title" id="doc-tab-title">Active Consultation Queue</div>
+        <div class="top-bar-actions">
+          <button class="btn-logout" id="btn-doc-logout">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
+          </button>
+        </div>
+      </header>
+
+      <!-- Content Scroll -->
+      <div class="content-body" id="doc_content_body">
+
+        <!-- 1. QUEUE & CONSULTATION SECTION -->
+        <section id="section-queue" class="dashboard-section" style="display: block;">
+          <div class="consultation-panel">
+            
+            <!-- Left Panel: Patients list and token search -->
+            <div>
+              <!-- Token Search Card -->
+              <div class="card" style="margin-bottom: 20px;">
+                <div class="card-header"><span class="card-title"><i class="fa-solid fa-magnifying-glass"></i> Search Patient Token</span></div>
+                <div class="card-body" style="padding: 16px;">
+                  <form id="doc-token-search-form" style="display: flex; gap: 12px;">
+                    <input type="text" id="doc-search-token-input" class="form-control" placeholder="Enter 4-digit OPD token (e.g. 1001)" required>
+                    <button type="submit" class="btn btn-primary">Search</button>
+                  </form>
+                </div>
+              </div>
+
+              <!-- Patients Queue Card -->
+              <div class="card">
+                <div class="card-header">
+                  <span class="card-title"><i class="fa-solid fa-users"></i> Queue List</span>
+                  <span class="badge badge-pending" id="queue-badge-count">0 Patients</span>
+                </div>
+                <div class="card-body" style="padding: 0;">
+                  <div class="table-container" style="border: none; border-radius: 0;">
+                    <table class="med-table">
+                      <thead>
+                        <tr>
+                          <th>Token</th>
+                          <th>Patient Name</th>
+                          <th>Age / Gender</th>
+                          <th>Status</th>
+                          <th>Registered</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody id="doc-queue-tbody">
+                        <!-- Loaded dynamically -->
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Panel: Clinical Workspace / Consultation Details -->
+            <div>
+              <div class="card" id="consult-workspace-card">
+                <div class="card-header">
+                  <span class="card-title"><i class="fa-solid fa-prescription-bottle-medical"></i> Clinical Consultation</span>
+                  <span class="badge badge-cancelled" id="lbl-workspace-status">No Active Patient</span>
+                </div>
+                <div class="card-body" id="workspace-empty-state">
+                  <div class="empty-state">
+                    <i class="fa-solid fa-stethoscope"></i>
+                    <h4>Select a Patient</h4>
+                    <p>Select a patient from the queue or search by token to open the medical records and prescription panel.</p>
+                  </div>
+                </div>
+
+                <!-- Active workspace form -->
+                <div class="card-body" id="workspace-active-panel" style="display: none; padding: 20px;">
+                  
+                  <!-- Patient Info Summary Banner -->
+                  <div class="patient-info-summary">
+                    <div class="patient-info-item">
+                      <div class="patient-info-label">Token</div>
+                      <div class="patient-info-value" id="lbl-work-token">#1001</div>
+                    </div>
+                    <div class="patient-info-item">
+                      <div class="patient-info-label">Name</div>
+                      <div class="patient-info-value" id="lbl-work-name">John Doe</div>
+                    </div>
+                    <div class="patient-info-item">
+                      <div class="patient-info-label">Age / Gender</div>
+                      <div class="patient-info-value" id="lbl-work-age-gen">28 / Male</div>
+                    </div>
+                    <div class="patient-info-item">
+                      <div class="patient-info-label">Phone</div>
+                      <div class="patient-info-value" id="lbl-work-phone">9876543210</div>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label>Stated Symptoms:</label>
+                    <div style="background-color: var(--bg-main); padding: 12px; border-radius: var(--radius-sm); font-size: 14px; border: 1px solid var(--border);" id="lbl-work-symptoms">
+                      No symptoms specified.
+                    </div>
+                  </div>
+
+                  <!-- Consult progress actions -->
+                  <div style="margin-bottom: 20px; display: flex; gap: 12px;" id="consult-status-actions">
+                    <button class="btn btn-primary" id="btn-start-consult">
+                      <i class="fa-solid fa-user-clock"></i> Start Consultation
+                    </button>
+                  </div>
+
+                  <form id="consultation-form" style="display: none;">
+                    <!-- Diagnosis Notes -->
+                    <div class="form-group">
+                      <label for="consult-diagnosis">Diagnosis Notes *</label>
+                      <textarea id="consult-diagnosis" class="form-control" placeholder="Clinical findings and diagnosis..." required></textarea>
+                    </div>
+
+                    <!-- Prescription -->
+                    <div class="form-group">
+                      <label for="consult-prescription">Prescription Notes *</label>
+                      <textarea id="consult-prescription" class="form-control" placeholder="Dosage, instructions (e.g. Paracetamol 650mg TDS x 3 days)..." required></textarea>
+                    </div>
+
+                    <!-- Suggest Lab Test -->
+                    <div class="form-group">
+                      <label for="consult-lab-suggest">Recommend Lab Tests</label>
+                      <input type="text" id="consult-lab-suggest" class="form-control" placeholder="e.g. CBC, Urine Routine (Comma separated)">
+                    </div>
+
+                    <!-- Buttons -->
+                    <div style="display: flex; gap: 12px; margin-top: 24px;">
+                      <button type="submit" class="btn btn-success" style="flex-grow: 1;">
+                        <i class="fa-solid fa-file-invoice-dollar"></i> Complete & Close Case
+                      </button>
+                    </div>
+                  </form>
+
+                  <!-- AI Assistant Section -->
+                  <div class="ai-suggestions-box">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                      <span style="font-weight: 700; font-size: 13px; color: var(--primary);">
+                        <i class="fa-solid fa-brain"></i> AI Clinical suggestions
+                      </span>
+                      <button class="btn btn-secondary btn-xs" id="btn-trigger-ai" style="padding: 4px 8px;">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Synthesize Symptoms
+                      </button>
+                    </div>
+                    <div id="ai-response-area" style="font-size: 12px; color: var(--text-muted); line-height: 1.6;">
+                      Click 'Synthesize Symptoms' to generate suggestions based on patient symptoms.
+                    </div>
+                    <div class="ai-disclaimer">
+                      Disclaimer: AI-assisted suggestions are references only. Doctor's medical diagnosis decision is absolute.
+                    </div>
+                  </div>
+
+                  <!-- Patient Clinical History -->
+                  <div class="card" style="margin-top: 20px;">
+                    <div class="card-header" style="padding: 10px 16px;"><span class="card-title" style="font-size:13px;"><i class="fa-solid fa-file-medical"></i> Previous Consultations</span></div>
+                    <div class="card-body" id="patient-history-area" style="padding: 16px; max-height: 200px; overflow-y: auto; font-size: 13px;">
+                      No previous records found.
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- settings section removed (pre-given key used) -->
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Loading State Overlay -->
+  <div class="loading-overlay" id="doc-loader" style="display: none;">
+    <div style="text-align: center;">
+      <div class="spinner"></div>
+      <p style="margin-top: 16px; font-weight: 500; color: var(--text-main);" id="doc-loader-text">Loading...</p>
+    </div>
+  </div>
+
+  <!-- Script Modules -->
+  <script type="module">
+    import { checkAuthAndRole, logoutUser } from "./auth.js";
+    import { 
+      db, 
+      collection, 
+      doc, 
+      setDoc, 
+      getDocs, 
+      updateDoc, 
+      query, 
+      where, 
+      onSnapshot, 
+      serverTimestamp,
+      GROQ_API_KEY
+    } from "./firebase.js";
+    import { showToast } from "./app.js";
+
+    let activeDoctorId = "";
+    let activeDoctorName = "";
+    let localPatients = [];
+    let selectedPatient = null;
+
+    const loader = document.getElementById("doc-loader");
+    const loaderText = document.getElementById("doc-loader-text");
+
+    function setLoader(show, text = "Loading...") {
+      loaderText.innerText = text;
+      loader.style.display = show ? "flex" : "none";
+    }
+
+    // Role-based auth
+    setLoader(true, "Securing Clinical Workspace...");
+    const loggedUser = await checkAuthAndRole(["doctor"]);
+    if (loggedUser) {
+      activeDoctorId = loggedUser.uid;
+      activeDoctorName = loggedUser.name;
+      document.getElementById("doc-name").innerText = loggedUser.name;
+      document.getElementById("doc-specialization").innerText = loggedUser.specialization || "Physician";
+      document.getElementById("doc-avatar").innerText = loggedUser.name.charAt(0).toUpperCase();
+      setLoader(false);
+    }
+
+    // Sign out
+    document.getElementById("btn-doc-logout").addEventListener("click", async () => {
+      setLoader(true, "Signing out...");
+      await logoutUser();
+    });
+
+    // Tab Navigation Logic
+    const tabs = document.querySelectorAll(".sidebar-menu-item");
+    const sections = document.querySelectorAll(".dashboard-section");
+    const tabTitle = document.getElementById("doc-tab-title");
+
+    tabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        const target = tab.getAttribute("data-tab");
+        tabs.forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        sections.forEach(sec => {
+          sec.style.display = sec.id === target ? "block" : "none";
+        });
+        tabTitle.innerText = tab.innerText.trim();
+      });
+    });
+
+    // Settings configuration handlers removed (pre-given key imported from firebase.js)
+
+    // Start Patient real-time queues
+    function syncDoctorQueue() {
+      // Listen to today's registrations assigned to this doctor
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      
+      const q = query(
+        collection(db, "patients"),
+        where("createdAt", ">=", today),
+        where("assignedDoctorId", "==", activeDoctorId)
+      );
+
+      onSnapshot(q, (snapshot) => {
+        localPatients = [];
+        snapshot.forEach(docSnap => {
+          localPatients.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        renderQueue();
+      });
+    }
+
+    syncDoctorQueue();
+
+    // Render Queue Table
+    function renderQueue() {
+      const tbody = document.getElementById("doc-queue-tbody");
+      tbody.innerHTML = "";
+
+      const activeQueue = localPatients.filter(p => p.status === "pending" || p.status === "in-consultation");
+      document.getElementById("queue-badge-count").innerText = `${activeQueue.length} Patients`;
+
+      // Sort chronological
+      activeQueue.sort((a,b) => parseInt(a.token) - parseInt(b.token));
+
+      if (activeQueue.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><h4>No pending patients in queue</h4></td></tr>`;
+        return;
+      }
+
+      activeQueue.forEach(p => {
+        const tr = document.createElement("tr");
+        const timeStr = p.createdAt ? (p.createdAt.toDate ? p.createdAt.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "N/A") : "Pending";
+        
+        let statusBadgeClass = "badge-pending";
+        if (p.status === "in-consultation") statusBadgeClass = "badge-in-consultation";
+
+        tr.innerHTML = `
+          <td><strong>#${p.token}</strong></td>
+          <td>${p.name}</td>
+          <td>${p.age} / ${p.gender}</td>
+          <td><span class="badge ${statusBadgeClass}">${p.status.replace('-', ' ')}</span></td>
+          <td>${timeStr}</td>
+          <td>
+            <button class="btn btn-primary btn-xs btn-workspace-trigger" data-id="${p.id}">
+              Open file
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Bind Trigger button
+      document.querySelectorAll(".btn-workspace-trigger").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          const id = e.target.dataset.id;
+          openPatientWorkspace(id);
+        });
+      });
+    }
+
+    // OPD Token Manual Search
+    document.getElementById("doc-token-search-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const token = document.getElementById("doc-search-token-input").value.trim();
+      
+      setLoader(true, "Searching token registry...");
+      try {
+        const qSearch = query(
+          collection(db, "patients"),
+          where("token", "==", token),
+          where("assignedDoctorId", "==", activeDoctorId)
+        );
+        const snap = await getDocs(qSearch);
+        if (snap.empty) {
+          showToast(`No patient with token #${token} assigned to you today.`, "warning");
+        } else {
+          openPatientWorkspace(snap.docs[0].id);
+        }
+      } catch (err) {
+        console.error(err);
+        showToast("Error locating patient file.", "error");
+      } finally {
+        setLoader(false);
+        document.getElementById("doc-token-search-form").reset();
+      }
+    });
+
+    // Open clinical workspace
+    async function openPatientWorkspace(id) {
+      const patient = localPatients.find(p => p.id === id);
+      if (!patient) return;
+      
+      selectedPatient = patient;
+
+      // Update Workspace UI elements
+      document.getElementById("lbl-work-token").innerText = `#${patient.token}`;
+      document.getElementById("lbl-work-name").innerText = patient.name;
+      document.getElementById("lbl-work-age-gen").innerText = `${patient.age} yrs / ${patient.gender}`;
+      document.getElementById("lbl-work-phone").innerText = patient.phone;
+      document.getElementById("lbl-work-symptoms").innerText = `"${patient.symptoms}"`;
+      
+      const statusBadge = document.getElementById("lbl-workspace-status");
+      statusBadge.innerText = patient.status.replace('-', ' ');
+      statusBadge.className = `badge ${patient.status === 'in-consultation' ? 'badge-in-consultation' : 'badge-pending'}`;
+
+      // Show/Hide Forms depending on status
+      const actionRow = document.getElementById("consult-status-actions");
+      const consultForm = document.getElementById("consultation-form");
+      
+      if (patient.status === "pending") {
+        actionRow.style.display = "flex";
+        consultForm.style.display = "none";
+      } else if (patient.status === "in-consultation") {
+        actionRow.style.display = "none";
+        consultForm.style.display = "block";
+      }
+
+      // Reset Form fields
+      document.getElementById("consult-diagnosis").value = patient.diagnosisNotes || "";
+      document.getElementById("consult-prescription").value = patient.prescriptionNotes || "";
+      document.getElementById("consult-lab-suggest").value = "";
+
+      // Load AI Suggestion default instructions
+      document.getElementById("ai-response-area").innerText = "Click 'Synthesize Symptoms' to generate suggestions based on patient symptoms.";
+
+      // Load patient history (Aadhaar lookup)
+      loadPatientHistory(patient.aadhaar);
+
+      // Hide empty, show active workspace
+      document.getElementById("workspace-empty-state").style.display = "none";
+      document.getElementById("workspace-active-panel").style.display = "block";
+    }
+
+    // Start consultation action
+    document.getElementById("btn-start-consult").addEventListener("click", async () => {
+      if (!selectedPatient) return;
+      
+      setLoader(true, "Opening session...");
+      try {
+        await updateDoc(doc(db, "patients", selectedPatient.id), { status: "in-consultation" });
+        showToast("Consultation session started.", "success");
+        
+        // Update local status tracking
+        selectedPatient.status = "in-consultation";
+        openPatientWorkspace(selectedPatient.id);
+      } catch (err) {
+        console.error(err);
+        showToast("Failed to change consultation state.", "error");
+      } finally {
+        setLoader(false);
+      }
+    });
+
+    // Submit consultation case completion
+    document.getElementById("consultation-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!selectedPatient) return;
+
+      setLoader(true, "Finalizing medical case notes...");
+      const diagnosis = document.getElementById("consult-diagnosis").value.trim();
+      const prescription = document.getElementById("consult-prescription").value.trim();
+      const labTestsText = document.getElementById("consult-lab-suggest").value.trim();
+
+      try {
+        // 1. Suggest Lab tests if entered
+        if (labTestsText) {
+          const tests = labTestsText.split(",").map(t => t.trim()).filter(t => t.length > 0);
+          for (const test of tests) {
+            const labRef = doc(collection(db, "labTests"));
+            await setDoc(labRef, {
+              testId: labRef.id,
+              patientName: selectedPatient.name,
+              phone: selectedPatient.phone,
+              testName: test,
+              referredBy: activeDoctorName,
+              status: "pending",
+              createdAt: serverTimestamp()
+            });
+          }
+        }
+
+        // 2. Complete consultation patient record
+        const patientRef = doc(db, "patients", selectedPatient.id);
+        const updateData = {
+          status: "completed",
+          diagnosisNotes: diagnosis,
+          prescriptionNotes: prescription,
+          attendedAt: serverTimestamp()
+        };
+        if (labTestsText) {
+          updateData.suggestedLabTests = labTestsText.split(",").map(t => t.trim());
+        }
+
+        await updateDoc(patientRef, updateData);
+
+        showToast(`Consultation for token #${selectedPatient.token} completed.`, "success");
+        
+        // Reset Workspace Panel
+        document.getElementById("workspace-empty-state").style.display = "block";
+        document.getElementById("workspace-active-panel").style.display = "none";
+        selectedPatient = null;
+      } catch (err) {
+        console.error(err);
+        showToast("Error updating case records.", "error");
+      } finally {
+        setLoader(false);
+      }
+    });
+
+    // Aadhaar lookup historical records
+    async function loadPatientHistory(aadhaar) {
+      const historyArea = document.getElementById("patient-history-area");
+      historyArea.innerHTML = "Querying record files...";
+
+      try {
+        const qHistory = query(
+          collection(db, "patients"),
+          where("aadhaar", "==", aadhaar),
+          where("status", "==", "completed")
+        );
+        const snap = await getDocs(qHistory);
+        if (snap.empty) {
+          historyArea.innerHTML = "No previous consultation records on file.";
+          return;
+        }
+
+        historyArea.innerHTML = "";
+        snap.forEach(docSnap => {
+          const data = docSnap.data();
+          const date = data.attendedAt ? (data.attendedAt.toDate ? data.attendedAt.toDate().toLocaleDateString() : new Date(data.attendedAt).toLocaleDateString()) : "N/A";
+          
+          const historyCard = document.createElement("div");
+          historyCard.style.padding = "8px";
+          historyCard.style.borderBottom = "1px solid var(--border)";
+          historyCard.style.marginBottom = "6px";
+
+          historyCard.innerHTML = `
+            <div style="font-weight: 700; color: var(--primary);">Visit Date: ${date}</div>
+            <div><strong>Diagnosis:</strong> ${data.diagnosisNotes}</div>
+            <div><strong>Rx:</strong> ${data.prescriptionNotes}</div>
+            ${data.suggestedLabTests ? `<div><strong>Labs suggested:</strong> ${data.suggestedLabTests.join(', ')}</div>` : ''}
+          `;
+          historyArea.appendChild(historyCard);
+        });
+      } catch (err) {
+        console.error(err);
+        historyArea.innerHTML = "Failed to load past medical history records.";
+      }
+    }
+
+    // AI Assisted Symptom analysis (Groq or local fallback database)
+    document.getElementById("btn-trigger-ai").addEventListener("click", async () => {
+      if (!selectedPatient) return;
+      const symptoms = selectedPatient.symptoms;
+      const responseArea = document.getElementById("ai-response-area");
+      
+      responseArea.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Analyzing symptoms...`;
+
+      const key = GROQ_API_KEY;
+      
+      if (key && key !== "YOUR_GROQ_API_KEY_HERE" && key.trim() !== "") {
+        // Fetch from GROQ
+        try {
+          const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${key}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              model: "llama-3.1-8b-instant",
+              messages: [
+                {
+                  role: "system",
+                  content: "You are a professional medical assistant helping an OPD physician during consultation. Synthesize the user symptoms and output short, bulleted references: 1. Potential differential diagnoses. 2. Key physical check recommendations. 3. Standard diagnostic or laboratory evaluations. Be concise (max 150 words). Include a medical disclaimer."
+                },
+                {
+                  role: "user",
+                  content: `Symptom analysis request for: "${symptoms}"`
+                }
+              ],
+              temperature: 0.3
+            })
+          });
+
+          if (!res.ok) {
+            throw new Error(`GROQ API returned status ${res.status}`);
+          }
+
+          const responseData = await res.json();
+          const text = responseData.choices[0].message.content;
+          
+          // Render markdown or paragraphs
+          responseArea.innerHTML = `<div style="font-weight:600; color:var(--success); margin-bottom:8px;"><i class="fa-solid fa-circle-check"></i> Synthesized using GROQ AI:</div>` + text.replace(/\n/g, "<br>");
+        } catch (err) {
+          console.error(err);
+          showToast("AI fetch failed. Check API key in dashboard.", "error");
+          loadLocalAISuggestions(symptoms);
+        }
+      } else {
+        // Fallback rule-based
+        setTimeout(() => {
+          loadLocalAISuggestions(symptoms);
+        }, 1000);
+      }
+    });
+
+    // Mock AI Clinical assistant rule generator
+    function loadLocalAISuggestions(symptoms) {
+      const sym = symptoms.toLowerCase();
+      const responseArea = document.getElementById("ai-response-area");
+      
+      let diagnosis = "General viral syndrome / symptomatic diagnosis.";
+      let recommendation = "Check systemic symptoms, hydration levels, temperature curve.";
+      let evaluations = "CBC, Urine routine if needed.";
+      let medicines = "Symptomatic treatment, rest.";
+
+      if (sym.includes("fever") || sym.includes("temp") || sym.includes("chills")) {
+        diagnosis = "Acute Febrile Illness / Viral Pyrexia";
+        recommendation = "Check core body temperature hourly, hydration status, chest auscultation.";
+        evaluations = "Complete Blood Count (CBC), Dengue NS1/Malaria antigen if fever persists > 48h.";
+        medicines = "Paracetamol 650mg SOS, cold compresses for high temp.";
+      } else if (sym.includes("cough") || sym.includes("cold") || sym.includes("throat") || sym.includes("congestion")) {
+        diagnosis = "Upper Respiratory Tract Infection (URTI) / Bronchitis";
+        recommendation = "Check pharynx for redness/exudate, evaluate lymph node swelling, check breathing rate.";
+        evaluations = "Chest X-Ray (if wheezing or persistent crackles), CBC.";
+        medicines = "Antihistamine, cough suppressant, warm saline gargles.";
+      } else if (sym.includes("stomach") || sym.includes("pain") || sym.includes("vomit") || sym.includes("nausea") || sym.includes("diarrhea")) {
+        diagnosis = "Acute Gastroenteritis / Dyspepsia";
+        recommendation = "Evaluate abdomen for tenderness or rigidity, check skin turgor for dehydration.";
+        evaluations = "Stool exam, ultrasound scan of whole abdomen if pain localization is severe.";
+        medicines = "Oral Rehydration Salts (ORS), proton-pump inhibitors, antiemetic.";
+      } else if (sym.includes("headache") || sym.includes("migraine")) {
+        diagnosis = "Tension Headache / Migraine Exacerbation";
+        recommendation = "Check blood pressure, neck rigidity, pupillary reflexes.";
+        evaluations = "Visual acuity check, CT scan only if neurological signs present.";
+        medicines = "Analgesic, dark quiet room rest, hydration.";
+      }
+
+      responseArea.innerHTML = `
+        <div style="font-weight: 600; color: var(--warning-text); margin-bottom: 8px;">
+          <i class="fa-solid fa-circle-exclamation"></i> Using Offline Clinical Knowledge Base (To enable AI suggestions, please add your GROQ API key in firebase.js):
+        </div>
+        <strong>Possible Diagnosis:</strong> ${diagnosis}<br>
+        <strong>Recommended Examination:</strong> ${recommendation}<br>
+        <strong>Suggested Diagnostics:</strong> ${evaluations}<br>
+        <strong>Standard Medications:</strong> ${medicines}
+      `;
+    }
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - MediOS</title>
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Chart.js for analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Core Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <div class="app-container" id="admin_app_container">
+    
+    <!-- Sidebar navigation -->
+    <aside class="sidebar" id="admin_sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <i class="fa-solid fa-heart-pulse"></i>
+          <span>MediOS Admin</span>
+        </div>
+      </div>
+      <ul class="sidebar-menu">
+        <li class="sidebar-menu-item active" data-tab="section-overview">
+          <a><i class="fa-solid fa-chart-line"></i> Overview Analytics</a>
+        </li>
+        <li class="sidebar-menu-item" data-tab="section-patients">
+          <a><i class="fa-solid fa-users"></i> OPD Patients</a>
+        </li>
+        <li class="sidebar-menu-item" data-tab="section-lab">
+          <a><i class="fa-solid fa-vial-medical"></i> Lab Registrations</a>
+        </li>
+        <li class="sidebar-menu-item" data-tab="section-staff">
+          <a><i class="fa-solid fa-user-doctor"></i> Staff Accounts</a>
+        </li>
+        <li class="sidebar-menu-item" data-tab="section-departments">
+          <a><i class="fa-solid fa-hospital"></i> Clinical Departments</a>
+        </li>
+      </ul>
+      <div class="sidebar-footer">
+        <div class="user-badge" id="admin_user_badge">
+          <div class="user-avatar" id="admin-avatar">A</div>
+          <div class="user-info">
+            <span class="user-name" id="admin-name">Admin User</span>
+            <span class="user-role">Administrator</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="main-content" id="admin_main_content">
+      
+      <!-- Top header bar -->
+      <header class="top-bar" id="admin_top_bar">
+        <div class="page-title" id="admin-current-tab-title">Overview Analytics</div>
+        <div class="top-bar-actions">
+          <button class="btn-logout" id="btn-admin-logout">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
+          </button>
+        </div>
+      </header>
+
+      <!-- Dashboard body scroll container -->
+      <div class="content-body" id="admin_content_body">
+
+        <!-- 1. OVERVIEW SECTION -->
+        <section id="section-overview" class="dashboard-section" style="display: block;">
+          <!-- KPI Cards -->
+          <div class="analytics-grid">
+            <div class="analytics-card">
+              <div class="analytics-info">
+                <h3>Total Registrations</h3>
+                <div class="analytics-value" id="kpi-total">0</div>
+              </div>
+              <div class="analytics-icon blue"><i class="fa-solid fa-address-book"></i></div>
+            </div>
+            <div class="analytics-card">
+              <div class="analytics-info">
+                <h3>Patients Attended</h3>
+                <div class="analytics-value" id="kpi-attended">0</div>
+              </div>
+              <div class="analytics-icon green"><i class="fa-solid fa-check-double"></i></div>
+            </div>
+            <div class="analytics-card">
+              <div class="analytics-info">
+                <h3>Pending Consultation</h3>
+                <div class="analytics-value" id="kpi-pending">0</div>
+              </div>
+              <div class="analytics-icon amber"><i class="fa-solid fa-clock"></i></div>
+            </div>
+            <div class="analytics-card">
+              <div class="analytics-info">
+                <h3>Lab Tests Registered</h3>
+                <div class="analytics-value" id="kpi-lab">0</div>
+              </div>
+              <div class="analytics-icon red"><i class="fa-solid fa-flask"></i></div>
+            </div>
+          </div>
+
+          <!-- Charts Layout -->
+          <div class="dashboard-grid-1x1">
+            <div class="card">
+              <div class="card-header"><span class="card-title"><i class="fa-solid fa-chart-pie"></i> Department Distribution</span></div>
+              <div class="card-body" style="height: 300px; display: flex; align-items: center; justify-content: center;">
+                <canvas id="deptChart"></canvas>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-header"><span class="card-title"><i class="fa-solid fa-chart-bar"></i> Doctor Assignments</span></div>
+              <div class="card-body" style="height: 300px; display: flex; align-items: center; justify-content: center;">
+                <canvas id="doctorChart"></canvas>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. OPD PATIENTS SECTION -->
+        <section id="section-patients" class="dashboard-section" style="display: none;">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title"><i class="fa-solid fa-table-list"></i> OPD Patient Registry</span>
+              <button class="btn btn-primary btn-xs" id="btn-admin-add-patient"><i class="fa-solid fa-user-plus"></i> Walk-in Registration</button>
+            </div>
+            <div class="card-body">
+              <!-- Search & Filters -->
+              <div class="search-bar-container">
+                <div class="search-input-wrapper">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                  <input type="text" id="patient-search" class="form-control" placeholder="Search by name, phone, Aadhaar, or token...">
+                </div>
+                <select id="patient-filter-status" class="form-control" style="max-width: 180px;">
+                  <option value="all">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="in-consultation">In Consultation</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+                <select id="patient-filter-dept" class="form-control" style="max-width: 180px;">
+                  <option value="all">All Departments</option>
+                </select>
+              </div>
+
+              <!-- Patients Table -->
+              <div class="table-container">
+                <table class="med-table" id="table-admin-patients">
+                  <thead>
+                    <tr>
+                      <th>Token</th>
+                      <th>Patient Name</th>
+                      <th>Age/Gender</th>
+                      <th>Department</th>
+                      <th>Assigned Doctor</th>
+                      <th>Status</th>
+                      <th>Registered On</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-patient-list">
+                    <!-- Dynamic Rows -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. LAB REGISTRATIONS SECTION -->
+        <section id="section-lab" class="dashboard-section" style="display: none;">
+          <div class="dashboard-grid-2x1">
+            <div class="card">
+              <div class="card-header"><span class="card-title"><i class="fa-solid fa-vials"></i> Lab Queue</span></div>
+              <div class="card-body">
+                <div class="table-container">
+                  <table class="med-table">
+                    <thead>
+                      <tr>
+                        <th>Patient Name</th>
+                        <th>Phone</th>
+                        <th>Test Name</th>
+                        <th>Referred By</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="admin-lab-list">
+                      <!-- Dynamic rows -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="card-header"><span class="card-title"><i class="fa-solid fa-file-invoice"></i> Register Lab Test</span></div>
+              <div class="card-body">
+                <form id="admin-lab-form">
+                  <div class="form-group">
+                    <label for="lab-pat-name">Patient Full Name *</label>
+                    <input type="text" id="lab-pat-name" class="form-control" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="lab-pat-phone">Phone Number *</label>
+                    <input type="tel" id="lab-pat-phone" class="form-control" pattern="\d{10}" title="10 numbers required" maxlength="10" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="lab-test-name">Test Name *</label>
+                    <input type="text" id="lab-test-name" class="form-control" placeholder="e.g. CBC, Lipid Profile, Thyroid" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="lab-referred">Referred By (Doctor Name)</label>
+                    <input type="text" id="lab-referred" class="form-control" placeholder="Self / Dr. Name">
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-block">Add Lab Register</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4. STAFF MANAGEMENT SECTION -->
+        <section id="section-staff" class="dashboard-section" style="display: none;">
+          <div class="dashboard-grid-2x1">
+            
+            <!-- Staff Accounts List -->
+            <div class="card">
+              <div class="card-header"><span class="card-title"><i class="fa-solid fa-user-nurse"></i> Current Staff</span></div>
+              <div class="card-body">
+                <div class="table-container">
+                  <table class="med-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Specialty / Availability</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="admin-staff-list">
+                      <!-- Dynamic rows -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <!-- Add Staff Member -->
+            <div class="card">
+              <div class="card-header"><span class="card-title"><i class="fa-solid fa-user-plus"></i> Create Staff Account</span></div>
+              <div class="card-body">
+                <form id="admin-staff-form">
+                  <div class="form-group">
+                    <label for="staff-name">Full Name *</label>
+                    <input type="text" id="staff-name" class="form-control" placeholder="Dr. Sarah Connor" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="staff-email">Email Address *</label>
+                    <input type="email" id="staff-email" class="form-control" placeholder="sarah@hospital.com" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="staff-password">Password *</label>
+                    <input type="password" id="staff-password" class="form-control" placeholder="Min 6 characters" minlength="6" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="staff-role">Role *</label>
+                    <select id="staff-role" class="form-control" required>
+                      <option value="" disabled selected>Select Role</option>
+                      <option value="doctor">Doctor</option>
+                      <option value="receptionist">Receptionist</option>
+                      <option value="admin">Administrator</option>
+                    </select>
+                  </div>
+                  <!-- Doctor fields -->
+                  <div class="form-group" id="staff-specialization-group" style="display: none;">
+                    <label for="staff-spec">Doctor Specialization (Department) *</label>
+                    <select id="staff-spec" class="form-control">
+                      <!-- populated dynamically -->
+                    </select>
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-block"><i class="fa-solid fa-user-plus"></i> Create Account</button>
+                </form>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- 5. DEPARTMENT MANAGEMENT SECTION -->
+        <section id="section-departments" class="dashboard-section" style="display: none;">
+          <div class="dashboard-grid-2x1">
+            <div class="card">
+              <div class="card-header"><span class="card-title"><i class="fa-solid fa-building-user"></i> Active Departments</span></div>
+              <div class="card-body">
+                <div class="table-container">
+                  <table class="med-table">
+                    <thead>
+                      <tr>
+                        <th>Department Name</th>
+                        <th>Created On</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody id="admin-dept-list">
+                      <!-- Dynamic rows -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card">
+              <div class="card-header"><span class="card-title"><i class="fa-solid fa-square-plus"></i> Add New Department</span></div>
+              <div class="card-body">
+                <form id="admin-dept-form">
+                  <div class="form-group">
+                    <label for="dept-name">Department Name *</label>
+                    <input type="text" id="dept-name" class="form-control" placeholder="e.g. Cardiology" required>
+                  </div>
+                  <button type="submit" class="btn btn-primary btn-block">Add Department</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Manual Walk-in OPD Registration Modal -->
+  <div class="modal-backdrop" id="patient-modal-backdrop">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-user-plus"></i> Walk-in Registration</h3>
+        <button class="modal-close" id="btn-close-pat-modal">&times;</button>
+      </div>
+      <form id="modal-patient-form">
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="m-pat-name">Full Name *</label>
+              <input type="text" id="m-pat-name" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="m-pat-age">Age *</label>
+              <input type="number" id="m-pat-age" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="m-pat-gender">Gender *</label>
+              <select id="m-pat-gender" class="form-control" required>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="m-pat-aadhaar">Aadhaar (12 Digits) *</label>
+              <input type="text" id="m-pat-aadhaar" class="form-control" pattern="\d{12}" title="12 numbers" maxlength="12" required>
+            </div>
+            <div class="form-group">
+              <label for="m-pat-phone">Phone Number *</label>
+              <input type="tel" id="m-pat-phone" class="form-control" pattern="\d{10}" title="10 numbers" maxlength="10" required>
+            </div>
+            <div class="form-group">
+              <label for="m-pat-email">Email Address</label>
+              <input type="email" id="m-pat-email" class="form-control">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="m-pat-address">Address *</label>
+            <input type="text" id="m-pat-address" class="form-control" required>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="m-pat-district">District *</label>
+              <input type="text" id="m-pat-district" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="m-pat-pin">Pin Code *</label>
+              <input type="text" id="m-pat-pin" class="form-control" pattern="\d{6}" title="6 numbers" maxlength="6" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="m-pat-dept">Required Department *</label>
+            <select id="m-pat-dept" class="form-control" required>
+              <!-- populated -->
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="m-pat-symptoms">Symptoms / Reason for Visit *</label>
+            <textarea id="m-pat-symptoms" class="form-control" required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-pat-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Complete Registration</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Loading State Overlay -->
+  <div class="loading-overlay" id="admin-loading-overlay" style="display: none;">
+    <div style="text-align: center;">
+      <div class="spinner"></div>
+      <p style="margin-top: 16px; font-weight: 500; color: var(--text-main);" id="loading-overlay-text">Checking authorization details...</p>
+    </div>
+  </div>
+
+  <!-- Script Modules -->
+  <script type="module">
+    import { checkAuthAndRole, logoutUser } from "./auth.js";
+    import { 
+      db, 
+      collection, 
+      doc, 
+      setDoc, 
+      getDocs, 
+      updateDoc, 
+      deleteDoc,
+      query, 
+      where, 
+      onSnapshot, 
+      serverTimestamp,
+      createStaffAuthAccount
+    } from "./firebase.js";
+    import { showToast } from "./app.js";
+
+    // Global arrays holding datasets for filtering/analytics
+    let localPatients = [];
+    let localStaff = [];
+    let localLabTests = [];
+    let localDepts = [];
+
+    // Charts instances
+    let deptChartInstance = null;
+    let docChartInstance = null;
+
+    // Loading overlay controls
+    const loader = document.getElementById("admin-loading-overlay");
+    const loaderText = document.getElementById("loading-overlay-text");
+
+    function setLoader(show, text = "Loading...") {
+      loaderText.innerText = text;
+      loader.style.display = show ? "flex" : "none";
+    }
+
+    // Authenticate Admin Access
+    setLoader(true, "Securing Admin Session...");
+    const loggedAdmin = await checkAuthAndRole(["admin"]);
+    if (loggedAdmin) {
+      document.getElementById("admin-name").innerText = loggedAdmin.name;
+      document.getElementById("admin-avatar").innerText = loggedAdmin.name.charAt(0).toUpperCase();
+      setLoader(false);
+    }
+
+    // Setup Logout Action
+    document.getElementById("btn-admin-logout").addEventListener("click", async () => {
+      setLoader(true, "Logging out...");
+      await logoutUser();
+    });
+
+    // Tab Navigation Logic
+    const tabs = document.querySelectorAll(".sidebar-menu-item");
+    const sections = document.querySelectorAll(".dashboard-section");
+    const tabTitle = document.getElementById("admin-current-tab-title");
+
+    tabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        const target = tab.getAttribute("data-tab");
+        
+        tabs.forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        
+        sections.forEach(sec => {
+          sec.style.display = sec.id === target ? "block" : "none";
+        });
+
+        // Set navbar title
+        tabTitle.innerText = tab.innerText.trim();
+        
+        // Trigger rendering helper for charts when overview is clicked
+        if (target === "section-overview") {
+          renderCharts();
+        }
+      });
+    });
+
+    // Show special doctor settings when doctor role is chosen in form
+    const roleSelect = document.getElementById("staff-role");
+    const specGroup = document.getElementById("staff-specialization-group");
+    roleSelect.addEventListener("change", () => {
+      specGroup.style.display = roleSelect.value === "doctor" ? "block" : "none";
+    });
+
+    // Modal Control: Walk-in Registration
+    const patientModal = document.getElementById("patient-modal-backdrop");
+    document.getElementById("btn-admin-add-patient").addEventListener("click", () => {
+      patientModal.classList.add("active");
+    });
+    
+    function closePatientModal() {
+      patientModal.classList.remove("active");
+      document.getElementById("modal-patient-form").reset();
+    }
+    document.getElementById("btn-close-pat-modal").addEventListener("click", closePatientModal);
+    document.getElementById("btn-cancel-pat-modal").addEventListener("click", closePatientModal);
+
+    // Initialize Real-time onSnapshot listeners
+    function startSyncListeners() {
+      // 1. Listen to Departments
+      onSnapshot(collection(db, "departments"), (snapshot) => {
+        localDepts = [];
+        snapshot.forEach(docSnap => {
+          localDepts.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        
+        // Populate select elements
+        updateDepartmentDropdowns();
+        renderDeptsTable();
+      });
+
+      // 2. Listen to Users (Staff)
+      onSnapshot(collection(db, "users"), (snapshot) => {
+        localStaff = [];
+        snapshot.forEach(docSnap => {
+          localStaff.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        renderStaffTable();
+        renderCharts();
+      });
+
+      // 3. Listen to Patients
+      onSnapshot(collection(db, "patients"), (snapshot) => {
+        localPatients = [];
+        snapshot.forEach(docSnap => {
+          localPatients.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        renderOverviewKPIs();
+        renderPatientsTable();
+        renderCharts();
+      });
+
+      // 4. Listen to Lab Tests
+      onSnapshot(collection(db, "labTests"), (snapshot) => {
+        localLabTests = [];
+        snapshot.forEach(docSnap => {
+          localLabTests.push({ id: docSnap.id, ...docSnap.data() });
+        });
+        renderLabTable();
+        renderOverviewKPIs();
+      });
+    }
+
+    startSyncListeners();
+
+    // Populate Department dropdowns dynamically
+    function updateDepartmentDropdowns() {
+      // 1. Staff Specialty Dropdown
+      const staffSpecSelect = document.getElementById("staff-spec");
+      staffSpecSelect.innerHTML = "";
+      
+      // 2. Filter Dropdown on patient registry
+      const patFilterDept = document.getElementById("patient-filter-dept");
+      patFilterDept.innerHTML = `<option value="all">All Departments</option>`;
+
+      // 3. Modal Patient Specialty Select
+      const modalPatDept = document.getElementById("m-pat-dept");
+      modalPatDept.innerHTML = "";
+
+      localDepts.forEach(d => {
+        // Staff spec options
+        const opt = document.createElement("option");
+        opt.value = d.name;
+        opt.innerText = d.name;
+        staffSpecSelect.appendChild(opt);
+
+        // Filter options
+        const filterOpt = document.createElement("option");
+        filterOpt.value = d.name;
+        filterOpt.innerText = d.name;
+        patFilterDept.appendChild(filterOpt);
+
+        // Modal patient options
+        const modalOpt = document.createElement("option");
+        modalOpt.value = d.name;
+        modalOpt.innerText = d.name;
+        modalPatDept.appendChild(modalOpt);
+      });
+    }
+
+    // 1. OVERVIEW: KPI updates
+    function renderOverviewKPIs() {
+      // Today bounds
+      const todayStart = new Date();
+      todayStart.setHours(0,0,0,0);
+
+      const todayPatients = localPatients.filter(p => {
+        if (!p.createdAt) return false;
+        const time = p.createdAt.toDate ? p.createdAt.toDate() : new Date(p.createdAt);
+        return time >= todayStart;
+      });
+
+      document.getElementById("kpi-total").innerText = todayPatients.length;
+      document.getElementById("kpi-attended").innerText = todayPatients.filter(p => p.status === "completed").length;
+      document.getElementById("kpi-pending").innerText = todayPatients.filter(p => p.status === "pending" || p.status === "in-consultation").length;
+      
+      const todayLabTests = localLabTests.filter(l => {
+        if (!l.createdAt) return false;
+        const time = l.createdAt.toDate ? l.createdAt.toDate() : new Date(l.createdAt);
+        return time >= todayStart;
+      });
+      document.getElementById("kpi-lab").innerText = todayLabTests.length;
+    }
+
+    // Render Charts
+    function renderCharts() {
+      // Avoid duplicate charts by destroying previous instances
+      if (deptChartInstance) deptChartInstance.destroy();
+      if (docChartInstance) docChartInstance.destroy();
+
+      // Gather department counts
+      const deptCounts = {};
+      localDepts.forEach(d => deptCounts[d.name] = 0);
+      localPatients.forEach(p => {
+        if (deptCounts[p.department] !== undefined) {
+          deptCounts[p.department]++;
+        }
+      });
+
+      const deptLabels = Object.keys(deptCounts);
+      const deptData = Object.values(deptCounts);
+
+      const deptCtx = document.getElementById("deptChart").getContext("2d");
+      deptChartInstance = new Chart(deptCtx, {
+        type: 'doughnut',
+        data: {
+          labels: deptLabels,
+          datasets: [{
+            data: deptData,
+            backgroundColor: ['#0284c7', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6']
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+
+      // Gather doctor counts
+      const docCounts = {};
+      const doctorList = localStaff.filter(s => s.role === "doctor");
+      doctorList.forEach(doc => {
+        docCounts[doc.name] = 0;
+      });
+      
+      localPatients.forEach(p => {
+        if (p.assignedDoctorName && docCounts[p.assignedDoctorName] !== undefined) {
+          docCounts[p.assignedDoctorName]++;
+        }
+      });
+
+      const docCtx = document.getElementById("doctorChart").getContext("2d");
+      docChartInstance = new Chart(docCtx, {
+        type: 'bar',
+        data: {
+          labels: Object.keys(docCounts),
+          datasets: [{
+            label: 'Assigned Patients',
+            data: Object.values(docCounts),
+            backgroundColor: '#0284c7'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, ticks: { stepSize: 1 } }
+          }
+        }
+      });
+    }
+
+    // 2. PATIENTS: Render Patients Registry with Search/Filters
+    const searchInput = document.getElementById("patient-search");
+    const statusFilter = document.getElementById("patient-filter-status");
+    const deptFilter = document.getElementById("patient-filter-dept");
+
+    searchInput.addEventListener("input", renderPatientsTable);
+    statusFilter.addEventListener("change", renderPatientsTable);
+    deptFilter.addEventListener("change", renderPatientsTable);
+
+    function renderPatientsTable() {
+      const q = searchInput.value.toLowerCase();
+      const status = statusFilter.value;
+      const dept = deptFilter.value;
+
+      const tbody = document.getElementById("admin-patient-list");
+      tbody.innerHTML = "";
+
+      const filtered = localPatients.filter(p => {
+        const matchesQuery = p.name.toLowerCase().includes(q) || 
+                             p.phone.includes(q) || 
+                             p.aadhaar.includes(q) || 
+                             p.token.includes(q);
+        const matchesStatus = status === "all" || p.status === status;
+        const matchesDept = dept === "all" || p.department === dept;
+        
+        return matchesQuery && matchesStatus && matchesDept;
+      });
+
+      // Sort by creation time descending (most recent registrations first)
+      filtered.sort((a,b) => {
+        const timeA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+        const timeB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+        return timeB - timeA;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="empty-state"><i class="fa-solid fa-hospital-user"></i><h4>No patients found</h4><p>No matching patient records are registered.</p></td></tr>`;
+        return;
+      }
+
+      filtered.forEach(p => {
+        const timeStr = p.createdAt ? (p.createdAt.toDate ? p.createdAt.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "N/A") : "Pending";
+        const tr = document.createElement("tr");
+
+        let statusClass = "badge-pending";
+        if (p.status === "completed") statusClass = "badge-completed";
+        if (p.status === "in-consultation") statusClass = "badge-in-consultation";
+        if (p.status === "cancelled") statusClass = "badge-cancelled";
+
+        tr.innerHTML = `
+          <td><strong>#${p.token}</strong></td>
+          <td>${p.name}</td>
+          <td>${p.age} yrs / ${p.gender}</td>
+          <td>${p.department}</td>
+          <td><span style="font-size: 13px; color: var(--text-muted);"><i class="fa-solid fa-user-doctor"></i> ${p.assignedDoctorName}</span></td>
+          <td><span class="badge ${statusClass}">${p.status.replace('-', ' ')}</span></td>
+          <td>${timeStr}</td>
+          <td>
+            ${p.status === 'pending' || p.status === 'in-consultation' ? `
+              <button class="btn btn-danger btn-xs btn-cancel-opd" data-id="${p.id}">
+                Cancel
+              </button>
+            ` : `<span style="font-size: 12px; color: var(--text-muted);">No Action</span>`}
+          </td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+
+      // Add cancel action listeners
+      document.querySelectorAll(".btn-cancel-opd").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+          const id = e.target.dataset.id;
+          if (confirm("Are you sure you want to cancel this OPD registration?")) {
+            try {
+              await updateDoc(doc(db, "patients", id), { status: "cancelled" });
+              showToast("Patient registration cancelled.", "success");
+            } catch (err) {
+              console.error(err);
+              showToast("Failed to cancel patient.", "error");
+            }
+          }
+        });
+      });
+    }
+
+    // Modal walk-in registration submit handler
+    document.getElementById("modal-patient-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      setLoader(true, "Registering walk-in patient...");
+
+      const name = document.getElementById("m-pat-name").value.trim();
+      const age = parseInt(document.getElementById("m-pat-age").value);
+      const gender = document.getElementById("m-pat-gender").value;
+      const aadhaar = document.getElementById("m-pat-aadhaar").value.trim();
+      const phone = document.getElementById("m-pat-phone").value.trim();
+      const email = document.getElementById("m-pat-email").value.trim();
+      const address = document.getElementById("m-pat-address").value.trim();
+      const district = document.getElementById("m-pat-district").value.trim();
+      const pin = document.getElementById("m-pat-pin").value.trim();
+      const department = document.getElementById("m-pat-dept").value;
+      const symptoms = document.getElementById("m-pat-symptoms").value.trim();
+
+      try {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        
+        // 1. Token
+        const todayCount = localPatients.filter(p => {
+          const t = p.createdAt?.toDate ? p.createdAt.toDate() : new Date(p.createdAt);
+          return t >= today;
+        }).length;
+        const generatedToken = (1000 + todayCount + 1).toString();
+
+        // 2. Doctor balancing
+        const departmentDoctors = localStaff.filter(s => s.role === "doctor" && s.specialization === department && s.availability === "available");
+        
+        let assignedDoctorId = null;
+        let assignedDoctorName = null;
+
+        if (departmentDoctors.length > 0) {
+          const docActiveCounts = departmentDoctors.map(d => {
+            const queueCount = localPatients.filter(p => p.assignedDoctorId === d.id && (p.status === "pending" || p.status === "in-consultation")).length;
+            return { ...d, queueCount };
+          });
+          docActiveCounts.sort((a,b) => a.queueCount - b.queueCount);
+          assignedDoctorId = docActiveCounts[0].id;
+          assignedDoctorName = docActiveCounts[0].name;
+        }
+
+        // 3. Save
+        const newPatientRef = doc(collection(db, "patients"));
+        await setDoc(newPatientRef, {
+          patientId: newPatientRef.id,
+          token: generatedToken,
+          name,
+          age,
+          gender,
+          aadhaar,
+          phone,
+          email,
+          address,
+          district,
+          pin,
+          department,
+          symptoms,
+          assignedDoctorId,
+          assignedDoctorName: assignedDoctorName || "No Doctor Assigned (Queueing)",
+          status: "pending",
+          createdAt: serverTimestamp()
+        });
+
+        showToast(`Registration Successful! Token issued: #${generatedToken}`, "success");
+        closePatientModal();
+      } catch (err) {
+        console.error(err);
+        showToast("Error creating registration.", "error");
+      } finally {
+        setLoader(false);
+      }
+    });
+
+    // 3. LAB TESTS: Render Lab registry
+    function renderLabTable() {
+      const tbody = document.getElementById("admin-lab-list");
+      tbody.innerHTML = "";
+
+      if (localLabTests.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><i class="fa-solid fa-flask"></i><h4>No lab tests recorded</h4><p>Register new tests on the right panel.</p></td></tr>`;
+        return;
+      }
+
+      // Sort by creation time desc
+      localLabTests.sort((a,b) => {
+        const timeA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+        const timeB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+        return timeB - timeA;
+      });
+
+      localLabTests.forEach(l => {
+        const tr = document.createElement("tr");
+        const statusBadgeClass = l.status === "completed" ? "badge-completed" : "badge-pending";
+
+        tr.innerHTML = `
+          <td><strong>${l.patientName}</strong></td>
+          <td>${l.phone}</td>
+          <td><span style="font-weight:600; color: var(--primary);">${l.testName}</span></td>
+          <td>Dr. ${l.referredBy || "Self-Referred"}</td>
+          <td><span class="badge ${statusBadgeClass}">${l.status}</span></td>
+          <td>
+            ${l.status === 'pending' ? `
+              <button class="btn btn-success btn-xs btn-complete-lab" data-id="${l.id}">
+                Complete Test
+              </button>
+            ` : `<span style="font-size: 12px; color: var(--text-muted);">Completed</span>`}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Complete lab test button handler
+      document.querySelectorAll(".btn-complete-lab").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+          const id = e.target.dataset.id;
+          try {
+            await updateDoc(doc(db, "labTests", id), { status: "completed" });
+            showToast("Lab test completed successfully.", "success");
+          } catch (err) {
+            console.error(err);
+            showToast("Failed to complete lab test.", "error");
+          }
+        });
+      });
+    }
+
+    // Submit Lab Form
+    document.getElementById("admin-lab-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      setLoader(true, "Registering lab referral...");
+
+      const name = document.getElementById("lab-pat-name").value.trim();
+      const phone = document.getElementById("lab-pat-phone").value.trim();
+      const testName = document.getElementById("lab-test-name").value.trim();
+      const referredBy = document.getElementById("lab-referred").value.trim() || "Self";
+
+      try {
+        const labRef = doc(collection(db, "labTests"));
+        await setDoc(labRef, {
+          testId: labRef.id,
+          patientName: name,
+          phone,
+          testName,
+          referredBy,
+          status: "pending",
+          createdAt: serverTimestamp()
+        });
+
+        showToast("Lab test referral logged successfully.", "success");
+        document.getElementById("admin-lab-form").reset();
+      } catch (err) {
+        console.error(err);
+        showToast("Failed to add lab test record.", "error");
+      } finally {
+        setLoader(false);
+      }
+    });
+
+    // 4. STAFF: Render Staff table
+    function renderStaffTable() {
+      const tbody = document.getElementById("admin-staff-list");
+      tbody.innerHTML = "";
+
+      if (localStaff.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-state"><h4>No staff accounts registered</h4></td></tr>`;
+        return;
+      }
+
+      localStaff.forEach(s => {
+        const tr = document.createElement("tr");
+
+        let detailCell = "";
+        let actionCell = "";
+
+        if (s.role === "doctor") {
+          let availClass = "badge-available";
+          if (s.availability === "busy") availClass = "badge-busy";
+          if (s.availability === "unavailable") availClass = "badge-unavailable";
+          
+          detailCell = `
+            <div style="font-size: 13px; font-weight:600;">Spec: ${s.specialization || "None"}</div>
+            <span class="badge ${availClass}" id="badge-avail-${s.id}">${s.availability}</span>
+          `;
+          
+          actionCell = `
+            <select class="form-control staff-avail-change btn-xs" data-id="${s.id}" style="width: auto; display: inline-block;">
+              <option value="" disabled selected>Change Status</option>
+              <option value="available">Set Available</option>
+              <option value="busy">Set Busy</option>
+              <option value="unavailable">Set Unavailable</option>
+            </select>
+          `;
+        } else {
+          detailCell = `<span style="font-size: 12px; color: var(--text-muted);">N/A</span>`;
+          actionCell = `<span style="font-size: 12px; color: var(--text-muted);">No Action</span>`;
+        }
+
+        tr.innerHTML = `
+          <td><strong>${s.name}</strong></td>
+          <td>${s.email}</td>
+          <td><span class="badge" style="background-color: var(--primary-light); color: var(--primary); text-transform: uppercase; font-size:10px;">${s.role}</span></td>
+          <td>${detailCell}</td>
+          <td>${actionCell}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Avail change handler
+      document.querySelectorAll(".staff-avail-change").forEach(select => {
+        select.addEventListener("change", async (e) => {
+          const id = e.target.dataset.id;
+          const newAvail = e.target.value;
+          setLoader(true, "Updating Doctor Status...");
+          try {
+            await updateDoc(doc(db, "users", id), { availability: newAvail });
+            showToast(`Doctor availability changed to ${newAvail}`, "success");
+          } catch (err) {
+            console.error(err);
+            showToast("Failed to update doctor state.", "error");
+          } finally {
+            setLoader(false);
+          }
+        });
+      });
+    }
+
+    // Submit Staff Creation Form
+    document.getElementById("admin-staff-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      setLoader(true, "Provisioning new staff account...");
+
+      const name = document.getElementById("staff-name").value.trim();
+      const email = document.getElementById("staff-email").value.trim();
+      const password = document.getElementById("staff-password").value;
+      const role = document.getElementById("staff-role").value;
+      const specialization = document.getElementById("staff-spec").value;
+
+      try {
+        // Create user using our secondary Firebase Auth logic
+        const authUser = await createStaffAuthAccount(email, password);
+        
+        // Write profile details to users Firestore document
+        const profileData = {
+          uid: authUser.uid,
+          name,
+          email,
+          role,
+          createdAt: serverTimestamp()
+        };
+
+        if (role === "doctor") {
+          profileData.specialization = specialization;
+          profileData.availability = "available";
+        }
+
+        await setDoc(doc(db, "users", authUser.uid), profileData);
+        
+        showToast(`Staff Account for ${name} created successfully!`, "success");
+        document.getElementById("admin-staff-form").reset();
+        specGroup.style.display = "none";
+      } catch (err) {
+        console.error(err);
+        showToast(err.message || "Failed to create staff account.", "error");
+      } finally {
+        setLoader(false);
+      }
+    });
+
+    // 5. DEPARTMENTS: Render departments
+    function renderDeptsTable() {
+      const tbody = document.getElementById("admin-dept-list");
+      tbody.innerHTML = "";
+
+      if (localDepts.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" class="empty-state"><h4>No clinical departments defined</h4></td></tr>`;
+        return;
+      }
+
+      localDepts.forEach(d => {
+        const tr = document.createElement("tr");
+        const dateStr = d.createdAt ? (d.createdAt.toDate ? d.createdAt.toDate().toLocaleDateString() : new Date(d.createdAt).toLocaleDateString()) : "N/A";
+        
+        tr.innerHTML = `
+          <td><strong>${d.name}</strong></td>
+          <td>${dateStr}</td>
+          <td>
+            <button class="btn btn-danger btn-xs btn-delete-dept" data-id="${d.id}">
+              Delete
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Delete dept handler
+      document.querySelectorAll(".btn-delete-dept").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+          const id = e.target.dataset.id;
+          if (confirm("Are you sure you want to delete this department? Doctors and public will no longer see it.")) {
+            setLoader(true, "Deleting department...");
+            try {
+              await deleteDoc(doc(db, "departments", id));
+              showToast("Department removed successfully.", "success");
+            } catch (err) {
+              console.error(err);
+              showToast("Failed to delete department.", "error");
+            } finally {
+              setLoader(false);
+            }
+          }
+        });
+      });
+    }
+
+    // Submit Department Form
+    document.getElementById("admin-dept-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      setLoader(true, "Adding department...");
+
+      const name = document.getElementById("dept-name").value.trim();
+
+      // Check duplicate
+      const isDuplicate = localDepts.some(d => d.name.toLowerCase() === name.toLowerCase());
+      if (isDuplicate) {
+        showToast("A department with this name already exists.", "warning");
+        setLoader(false);
+        return;
+      }
+
+      try {
+        const deptRef = doc(collection(db, "departments"));
+        await setDoc(deptRef, {
+          departmentId: deptRef.id,
+          name,
+          createdAt: serverTimestamp()
+        });
+
+        showToast("Clinical department added successfully.", "success");
+        document.getElementById("admin-dept-form").reset();
+      } catch (err) {
+        console.error(err);
+        showToast("Failed to create department.", "error");
+      } finally {
+        setLoader(false);
+      }
+    });
+
+  </script>
+</body>
+</html>

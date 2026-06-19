@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Public OPD Registration - MediOS</title>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Core Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Toast alerts container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Header Bar -->
+  <nav class="landing-navbar" id="opd_nav">
+    <div class="sidebar-brand">
+      <i class="fa-solid fa-heart-pulse"></i>
+      <span>MediOS OPD Portal</span>
+    </div>
+    <div>
+      <a href="index.html" class="btn btn-secondary" id="btn_opd_back_home">
+        <i class="fa-solid fa-house"></i> Home
+      </a>
+    </div>
+  </nav>
+
+  <!-- Main Registration Form Container -->
+  <main class="registration-container" id="opd_register_main">
+    <div class="card" id="opd_form_card">
+      <div class="card-header">
+        <h2 class="card-title"><i class="fa-solid fa-user-pen"></i> New OPD Patient Registration</h2>
+        <span style="font-size: 12px; color: var(--text-muted);">Please fill all details correctly</span>
+      </div>
+      <div class="card-body">
+        <form id="opd-registration-form">
+          
+          <!-- Row 1: Full Name & Age -->
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="pat-name">Full Name (As in ID) *</label>
+              <input type="text" id="pat-name" class="form-control" placeholder="John Doe" required>
+            </div>
+            <div class="form-group">
+              <label for="pat-age">Age *</label>
+              <input type="number" id="pat-age" class="form-control" placeholder="e.g. 28" min="0" max="120" required>
+            </div>
+            <div class="form-group">
+              <label for="pat-gender">Gender *</label>
+              <select id="pat-gender" class="form-control" required>
+                <option value="" disabled selected>Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Row 2: Aadhaar (12 Digits) & Contact -->
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="pat-aadhaar">Aadhaar Card Number (12 Digits) *</label>
+              <input type="text" id="pat-aadhaar" class="form-control" placeholder="12-digit Aadhaar" pattern="\d{12}" title="Aadhaar must be exactly 12 numbers" maxlength="12" required>
+            </div>
+            <div class="form-group">
+              <label for="pat-phone">Phone Number *</label>
+              <input type="tel" id="pat-phone" class="form-control" placeholder="10-digit Phone" pattern="\d{10}" title="Phone must be exactly 10 numbers" maxlength="10" required>
+            </div>
+            <div class="form-group">
+              <label for="pat-email">Email Address</label>
+              <input type="email" id="pat-email" class="form-control" placeholder="john@example.com">
+            </div>
+          </div>
+
+          <!-- Row 3: Address & Location details -->
+          <div class="form-group">
+            <label for="pat-address">Full Address *</label>
+            <input type="text" id="pat-address" class="form-control" placeholder="House No, Street, Landmark" required>
+          </div>
+          
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="pat-district">District *</label>
+              <input type="text" id="pat-district" class="form-control" placeholder="District name" required>
+            </div>
+            <div class="form-group">
+              <label for="pat-pin">Pin Code *</label>
+              <input type="text" id="pat-pin" class="form-control" placeholder="6-digit Pin Code" pattern="\d{6}" title="Pin Code must be 6 numbers" maxlength="6" required>
+            </div>
+          </div>
+
+          <hr style="border: 0; border-top: 1px solid var(--border); margin: 24px 0;">
+
+          <!-- Row 4: Department & Symptoms -->
+          <div class="form-group">
+            <label for="pat-dept">Required Department/Specialization *</label>
+            <select id="pat-dept" class="form-control" required>
+              <option value="" disabled selected>Loading Clinical Departments...</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="pat-symptoms">Symptoms / Reason for Visit *</label>
+            <textarea id="pat-symptoms" class="form-control" placeholder="Describe symptoms briefly (e.g. fever for 3 days, cough, headache)..." required></textarea>
+          </div>
+
+          <!-- Captcha Section -->
+          <div class="form-group">
+            <label>Security Verification *</label>
+            <div class="captcha-container">
+              <span class="captcha-question" id="captcha-question">Loading Captcha...</span>
+              <button type="button" class="captcha-refresh-btn" id="captcha-refresh-btn">
+                <i class="fa-solid fa-rotate-right"></i> Refresh
+              </button>
+            </div>
+            <input type="text" id="captcha-input" class="form-control" placeholder="Enter answer here" required style="margin-top: 8px;">
+          </div>
+
+          <!-- Submit Action -->
+          <button type="submit" class="btn btn-primary btn-block" style="margin-top: 16px;" id="btn_submit_opd">
+            <i class="fa-solid fa-circle-check"></i> Register Patient & Generate Token
+          </button>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <!-- Success Token Modal Overlay -->
+  <div class="modal-backdrop" id="success-modal-backdrop">
+    <div class="modal-content" style="max-width: 440px;" id="success_modal_content">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color: var(--success);"><i class="fa-solid fa-circle-check"></i> OPD Registration Success</h3>
+        <button class="modal-close" id="btn_close_success_modal">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 16px;">
+        <p style="text-align: center; color: var(--text-muted); font-size: 13px;">Please save your OPD registration details:</p>
+        
+        <!-- Print friendly token slip -->
+        <div class="token-slip-card" id="token-slip">
+          <div style="font-weight: 700; font-size: 16px; color: var(--text-main);">
+            <i class="fa-solid fa-heart-pulse" style="color: var(--primary);"></i> MediOS Medical Center
+          </div>
+          <p style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">OPD Patient Slip</p>
+          
+          <div class="token-slip-number" id="lbl-slip-token">----</div>
+          
+          <div class="token-slip-meta">
+            <div>Patient Name: <span id="lbl-slip-name">---</span></div>
+            <div>Age / Gender: <span id="lbl-slip-age-gen">---</span></div>
+            <div>Aadhaar: <span id="lbl-slip-aadhaar">---</span></div>
+            <div>Department: <span id="lbl-slip-dept">---</span></div>
+            <div>Assigned Doctor: <span id="lbl-slip-doctor">---</span></div>
+            <div>Estimated Wait: <span id="lbl-slip-wait" style="color: var(--primary);">---</span></div>
+            <div>Registered On: <span id="lbl-slip-time">---</span></div>
+          </div>
+        </div>
+        
+        <p style="font-size: 11px; text-align: center; color: var(--text-muted); margin-top: 8px;">
+          * Please show this slip at the reception desk when you arrive.
+        </p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-print-token">
+          <i class="fa-solid fa-print"></i> Print Slip
+        </button>
+        <button class="btn btn-primary" id="btn-close-modal">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Print Slip Container (for standard OS Print Dialog overrides) -->
+  <div id="print-slip" class="printable-slip"></div>
+
+  <!-- Loading State Overlay -->
+  <div class="loading-overlay" id="loading-overlay" style="display: none;">
+    <div style="text-align: center;">
+      <div class="spinner"></div>
+      <p style="margin-top: 16px; font-weight: 500; color: var(--text-main);">Processing registration and queue metrics...</p>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module">
+    import { db, collection, doc, setDoc, getDocs, query, where, serverTimestamp } from "./firebase.js";
+    import { showToast, generateCaptcha, calculateEstimatedWaitTime } from "./app.js";
+
+    let activeCaptcha = { question: "", answer: "" };
+    const form = document.getElementById("opd-registration-form");
+    const deptSelect = document.getElementById("pat-dept");
+    const captchaLabel = document.getElementById("captcha-question");
+    const captchaInput = document.getElementById("captcha-input");
+    const refreshCaptchaBtn = document.getElementById("captcha-refresh-btn");
+    const loadingOverlay = document.getElementById("loading-overlay");
+    const successModal = document.getElementById("success-modal-backdrop");
+    
+    // Slip Elements
+    const slipToken = document.getElementById("lbl-slip-token");
+    const slipName = document.getElementById("lbl-slip-name");
+    const slipAgeGen = document.getElementById("lbl-slip-age-gen");
+    const slipAadhaar = document.getElementById("lbl-slip-aadhaar");
+    const slipDept = document.getElementById("lbl-slip-dept");
+    const slipDoctor = document.getElementById("lbl-slip-doctor");
+    const slipWait = document.getElementById("lbl-slip-wait");
+    const slipTime = document.getElementById("lbl-slip-time");
+
+    // Close Modal actions
+    document.getElementById("btn_close_success_modal").addEventListener("click", () => {
+      successModal.classList.remove("active");
+      form.reset();
+      resetCaptcha();
+    });
+    document.getElementById("btn-close-modal").addEventListener("click", () => {
+      successModal.classList.remove("active");
+      form.reset();
+      resetCaptcha();
+    });
+
+    // Print Token action
+    document.getElementById("btn-print-token").addEventListener("click", () => {
+      const printContent = document.getElementById("token-slip").innerHTML;
+      const printContainer = document.getElementById("print-slip");
+      printContainer.innerHTML = printContent;
+      window.print();
+    });
+
+    // Initialize Captcha
+    function resetCaptcha() {
+      activeCaptcha = generateCaptcha();
+      captchaLabel.innerText = activeCaptcha.question;
+      captchaInput.value = "";
+    }
+    refreshCaptchaBtn.addEventListener("click", resetCaptcha);
+    resetCaptcha();
+
+    // Fetch and populate clinical departments
+    async function loadDepartments() {
+      try {
+        const querySnapshot = await getDocs(collection(db, "departments"));
+        deptSelect.innerHTML = "";
+        
+        const firstOpt = document.createElement("option");
+        firstOpt.value = "";
+        firstOpt.disabled = true;
+        firstOpt.selected = true;
+        firstOpt.innerText = "Select Clinical Department";
+        deptSelect.appendChild(firstOpt);
+
+        if (querySnapshot.empty) {
+          // If no departments exist, populate static defaults for public usage
+          const defaults = ["General Medicine", "Pediatrics", "Cardiology", "Orthopedics", "Dermatology"];
+          defaults.forEach(dept => {
+            const opt = document.createElement("option");
+            opt.value = dept;
+            opt.innerText = dept;
+            deptSelect.appendChild(opt);
+          });
+        } else {
+          querySnapshot.forEach(doc => {
+            const opt = document.createElement("option");
+            opt.value = doc.data().name;
+            opt.innerText = doc.data().name;
+            deptSelect.appendChild(opt);
+          });
+        }
+      } catch (err) {
+        console.error("Error loading departments:", err);
+        // Fallback options
+        deptSelect.innerHTML = "";
+        const defaults = ["General Medicine", "Pediatrics", "Cardiology", "Orthopedics", "Dermatology"];
+        defaults.forEach(dept => {
+          const opt = document.createElement("option");
+          opt.value = dept;
+          opt.innerText = dept;
+          deptSelect.appendChild(opt);
+        });
+      }
+    }
+    loadDepartments();
+
+    // Handle Form Submission
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      // Captcha verification
+      if (captchaInput.value.trim() !== activeCaptcha.answer) {
+        showToast("Incorrect Captcha Verification answer. Please try again.", "error");
+        resetCaptcha();
+        return;
+      }
+
+      loadingOverlay.style.display = "flex";
+
+      const name = document.getElementById("pat-name").value.trim();
+      const age = parseInt(document.getElementById("pat-age").value);
+      const gender = document.getElementById("pat-gender").value;
+      const aadhaar = document.getElementById("pat-aadhaar").value.trim();
+      const phone = document.getElementById("pat-phone").value.trim();
+      const email = document.getElementById("pat-email").value.trim();
+      const address = document.getElementById("pat-address").value.trim();
+      const district = document.getElementById("pat-district").value.trim();
+      const pin = document.getElementById("pat-pin").value.trim();
+      const department = deptSelect.value;
+      const symptoms = document.getElementById("pat-symptoms").value.trim();
+
+      try {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
+        // 1. Generate 4-digit OPD token
+        // Query patient count registered today to generate next serial token
+        const qTodayPatients = query(collection(db, "patients"), where("createdAt", ">=", today));
+        const todayPatientsSnap = await getDocs(qTodayPatients);
+        const nextNumber = todayPatientsSnap.size + 1;
+        const generatedToken = (1000 + nextNumber).toString();
+
+        // 2. Queue Load Balancing & Auto Doctor Assignment
+        const qDoctors = query(
+          collection(db, "users"),
+          where("role", "==", "doctor"),
+          where("specialization", "==", department),
+          where("availability", "==", "available")
+        );
+        const doctorsSnap = await getDocs(qDoctors);
+        
+        let assignedDoctorId = null;
+        let assignedDoctorName = null;
+        let pendingQueueCount = 0;
+
+        if (!doctorsSnap.empty) {
+          const doctorsQueueInfo = [];
+          
+          doctorsSnap.forEach(docSnap => {
+            doctorsQueueInfo.push({
+              id: docSnap.id,
+              name: docSnap.data().name,
+              queueCount: 0
+            });
+          });
+
+          // Fetch all patients today who are in 'pending' or 'in-consultation' status
+          const qActivePatients = query(
+            collection(db, "patients"),
+            where("createdAt", ">=", today),
+            where("status", "in", ["pending", "in-consultation"])
+          );
+          const activePatientsSnap = await getDocs(qActivePatients);
+          
+          activePatientsSnap.forEach(patSnap => {
+            const patData = patSnap.data();
+            const doctorMatch = doctorsQueueInfo.find(doc => doc.id === patData.assignedDoctorId);
+            if (doctorMatch) {
+              doctorMatch.queueCount++;
+            }
+          });
+
+          // Sort by lowest queue size (load balancing)
+          doctorsQueueInfo.sort((a, b) => a.queueCount - b.queueCount);
+          assignedDoctorId = doctorsQueueInfo[0].id;
+          assignedDoctorName = doctorsQueueInfo[0].name;
+          pendingQueueCount = doctorsQueueInfo[0].queueCount;
+        }
+
+        // 3. Write Patient to Firestore with dynamic reference doc id
+        const newPatientRef = doc(collection(db, "patients"));
+        const patientId = newPatientRef.id;
+
+        const newPatientData = {
+          patientId,
+          token: generatedToken,
+          name,
+          age,
+          gender,
+          aadhaar,
+          phone,
+          email,
+          address,
+          district,
+          pin,
+          department,
+          symptoms,
+          assignedDoctorId,
+          assignedDoctorName: assignedDoctorName || "No Doctor Assigned (Queueing)",
+          status: "pending",
+          createdAt: serverTimestamp()
+        };
+
+        await setDoc(newPatientRef, newPatientData);
+
+        // Update Success Slip UI
+        slipToken.innerText = generatedToken;
+        slipName.innerText = name;
+        slipAgeGen.innerText = `${age} yrs / ${gender}`;
+        slipAadhaar.innerText = `XXXX-XXXX-${aadhaar.slice(-4)}`;
+        slipDept.innerText = department;
+        slipDoctor.innerText = assignedDoctorName || "Waiting for Assignment";
+        slipWait.innerText = calculateEstimatedWaitTime(pendingQueueCount);
+        slipTime.innerText = new Date().toLocaleString();
+
+        showToast("OPD Registration Successful!", "success");
+        successModal.classList.add("active");
+      } catch (err) {
+        console.error("Error during OPD registration:", err);
+        showToast("Failed to register patient. Please contact support.", "error");
+      } finally {
+        loadingOverlay.style.display = "none";
+      }
+    });
+  </script>
+</body>
+</html>

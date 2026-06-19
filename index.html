@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MediOS - Smart Hospital OPD & Patient Management System</title>
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Core Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Landing Page Navigation -->
+  <nav class="landing-navbar" id="navbar_landing">
+    <div class="sidebar-brand">
+      <i class="fa-solid fa-heart-pulse"></i>
+      <span>MediOS</span>
+    </div>
+    <div class="nav-links">
+      <a href="login.html" class="btn btn-secondary" id="btn_staff_login_nav">
+        <i class="fa-solid fa-user-shield"></i> Staff Portal Login
+      </a>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="landing-hero" id="hero_landing">
+    <span class="hero-badge"><i class="fa-solid fa-sparkles"></i> AI-Powered Hospital Streamlining</span>
+    <h1>Next-Gen <span>OPD & Patient</span> Flows</h1>
+    <p>A secure, real-time clinical workspace for doctors, receptionists, and administrators. Optimize waiting times, track tokens, and enhance care quality.</p>
+    <div class="hero-actions">
+      <a href="opd-register.html" class="btn btn-primary" id="btn_hero_register">
+        <i class="fa-solid fa-file-signature"></i> Public OPD Registration
+      </a>
+      <a href="login.html" class="btn btn-secondary" id="btn_hero_login">
+        <i class="fa-solid fa-lock"></i> Staff Dashboard Access
+      </a>
+    </div>
+  </header>
+
+  <!-- Features Grid -->
+  <section class="features-grid" id="features_section">
+    <!-- Feature 1 -->
+    <div class="feature-card" id="feature_opd">
+      <i class="fa-solid fa-id-card-clip"></i>
+      <h3>Public OPD Registration</h3>
+      <p>Patients register from anywhere or at kiosks. Instantly issues a 4-digit OPD token and estimates wait times.</p>
+    </div>
+    <!-- Feature 2 -->
+    <div class="feature-card" id="feature_assign">
+      <i class="fa-solid fa-user-doctor"></i>
+      <h3>Smart Doctor Assignment</h3>
+      <p>Dynamically matches incoming patients to available doctors according to clinical department and current patient queues.</p>
+    </div>
+    <!-- Feature 3 -->
+    <div class="feature-card" id="feature_queue">
+      <i class="fa-solid fa-arrows-spin"></i>
+      <h3>Real-time Queues</h3>
+      <p>Synchronized tables allow receptionists and doctors to manage status updates from check-in to consultation and completion.</p>
+    </div>
+    <!-- Feature 4 -->
+    <div class="feature-card" id="feature_ai">
+      <i class="fa-solid fa-brain"></i>
+      <h3>AI Clinical Suggestions</h3>
+      <p>Integrates symptom synthesis using LLMs to suggest diagnosis references, assisting clinical documentation directly.</p>
+    </div>
+  </section>
+
+  <!-- Brief Footer -->
+  <footer style="text-align: center; padding: 40px 24px; color: var(--text-muted); font-size: 13px; border-top: 1px solid var(--border);" id="footer_landing">
+    <p>&copy; 2026 MediOS Smart Systems. All rights reserved. Powered by secure Firebase Authentication & Cloud Firestore.</p>
+  </footer>
+
+</body>
+</html>

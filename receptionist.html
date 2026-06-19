@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Receptionist Dashboard - MediOS</title>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Core Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <div class="app-container" id="receptionist_container">
+    
+    <!-- Sidebar -->
+    <aside class="sidebar" id="recep_sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-brand">
+          <i class="fa-solid fa-heart-pulse"></i>
+          <span>MediOS Front Desk</span>
+        </div>
+      </div>
+      <ul class="sidebar-menu">
+        <li class="sidebar-menu-item active" data-tab="section-queue">
+          <a><i class="fa-solid fa-clipboard-list"></i> Today's Queue</a>
+        </li>
+        <li class="sidebar-menu-item" data-tab="section-register-opd">
+          <a><i class="fa-solid fa-user-plus"></i> Walk-in Registration</a>
+        </li>
+        <li class="sidebar-menu-item" data-tab="section-register-lab">
+          <a><i class="fa-solid fa-flask"></i> Lab Test Registration</a>
+        </li>
+      </ul>
+      <div class="sidebar-footer">
+        <div class="user-badge" id="recep_user_badge">
+          <div class="user-avatar" id="recep-avatar">R</div>
+          <div class="user-info">
+            <span class="user-name" id="recep-name">Receptionist</span>
+            <span class="user-role">Receptionist</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="main-content" id="recep_main_content">
+      
+      <!-- Top navbar -->
+      <header class="top-bar" id="recep_top_bar">
+        <div class="page-title" id="recep-tab-title">Today's Token Queue</div>
+        <div class="top-bar-actions">
+          <button class="btn-logout" id="btn-recep-logout">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i> Sign Out
+          </button>
+        </div>
+      </header>
+
+      <!-- Content Scroll Container -->
+      <div class="content-body" id="recep_content_body">
+
+        <!-- 1. QUEUE MANAGEMENT SECTION -->
+        <section id="section-queue" class="dashboard-section" style="display: block;">
+          
+          <!-- KPI Cards for Receptionist -->
+          <div class="analytics-grid">
+            <div class="analytics-card">
+              <div class="analytics-info">
+                <h3>Total Registrations Today</h3>
+                <div class="analytics-value" id="kpi-recep-total">0</div>
+              </div>
+              <div class="analytics-icon blue"><i class="fa-solid fa-clipboard-user"></i></div>
+            </div>
+            <div class="analytics-card">
+              <div class="analytics-info">
+                <h3>Pending Consultation</h3>
+                <div class="analytics-value" id="kpi-recep-pending">0</div>
+              </div>
+              <div class="analytics-icon amber"><i class="fa-solid fa-clock"></i></div>
+            </div>
+            <div class="analytics-card">
+              <div class="analytics-info">
+                <h3>Completed Visits</h3>
+                <div class="analytics-value" id="kpi-recep-completed">0</div>
+              </div>
+              <div class="analytics-icon green"><i class="fa-solid fa-check-double"></i></div>
+            </div>
+          </div>
+
+          <!-- Queue Patient registry table card -->
+          <div class="card">
+            <div class="card-header"><span class="card-title"><i class="fa-solid fa-arrow-down-9-1"></i> Patient Queue Management</span></div>
+            <div class="card-body">
+              
+              <!-- Filter tools -->
+              <div class="search-bar-container">
+                <div class="search-input-wrapper">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                  <input type="text" id="recep-queue-search" class="form-control" placeholder="Search token, name, Aadhaar, or phone...">
+                </div>
+                <select id="recep-filter-status" class="form-control" style="max-width: 180px;">
+                  <option value="all">All Statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="in-consultation">In Consultation</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+
+              <!-- Patients Table -->
+              <div class="table-container">
+                <table class="med-table">
+                  <thead>
+                    <tr>
+                      <th>Token</th>
+                      <th>Patient Details</th>
+                      <th>Reason / Symptoms</th>
+                      <th>Assigned Doctor</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="recep-queue-tbody">
+                    <!-- Loaded dynamically -->
+                  </tbody>
+                </table>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <!-- 2. WALK-IN OPD REGISTRATION SECTION -->
+        <section id="section-register-opd" class="dashboard-section" style="display: none;">
+          <div class="card" style="max-width: 800px; margin: 0 auto;">
+            <div class="card-header"><span class="card-title"><i class="fa-solid fa-user-plus"></i> Manual Walk-in OPD Intake</span></div>
+            <div class="card-body">
+              <form id="recep-opd-form">
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label for="opd-name">Patient Full Name *</label>
+                    <input type="text" id="opd-name" class="form-control" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="opd-age">Age *</label>
+                    <input type="number" id="opd-age" class="form-control" min="0" max="120" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="opd-gender">Gender *</label>
+                    <select id="opd-gender" class="form-control" required>
+                      <option value="" disabled selected>Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                      <option value="Other">Other</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label for="opd-aadhaar">Aadhaar Card (12 Digits) *</label>
+                    <input type="text" id="opd-aadhaar" class="form-control" pattern="\d{12}" title="12 numbers" maxlength="12" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="opd-phone">Phone Number *</label>
+                    <input type="tel" id="opd-phone" class="form-control" pattern="\d{10}" title="10 numbers" maxlength="10" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="opd-email">Email Address</label>
+                    <input type="email" id="opd-email" class="form-control" placeholder="Optional">
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label for="opd-address">Full Address *</label>
+                  <input type="text" id="opd-address" class="form-control" required>
+                </div>
+
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label for="opd-district">District *</label>
+                    <input type="text" id="opd-district" class="form-control" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="opd-pin">Pin Code *</label>
+                    <input type="text" id="opd-pin" class="form-control" pattern="\d{6}" title="6 numbers" maxlength="6" required>
+                  </div>
+                </div>
+
+                <hr style="border:0; border-top: 1px solid var(--border); margin: 24px 0;">
+
+                <div class="form-group">
+                  <label for="opd-dept">Clinical Department *</label>
+                  <select id="opd-dept" class="form-control" required>
+                    <option value="" disabled selected>Select Department</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label for="opd-symptoms">Symptoms / Reason for Visit *</label>
+                  <textarea id="opd-symptoms" class="form-control" placeholder="Reason for check-up..." required></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block"><i class="fa-solid fa-clipboard-check"></i> Register and Issue Token</button>
+              </form>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3. LAB TEST REGISTRATION SECTION -->
+        <section id="section-register-lab" class="dashboard-section" style="display: none;">
+          <div class="card" style="max-width: 500px; margin: 0 auto;">
+            <div class="card-header"><span class="card-title"><i class="fa-solid fa-flask"></i> Walk-in Lab Test Intake</span></div>
+            <div class="card-body">
+              <form id="recep-lab-form">
+                <div class="form-group">
+                  <label for="lab-name">Patient Full Name *</label>
+                  <input type="text" id="lab-name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                  <label for="lab-phone">Phone Number *</label>
+                  <input type="tel" id="lab-phone" class="form-control" pattern="\d{10}" title="10 numbers" maxlength="10" required>
+                </div>
+                <div class="form-group">
+                  <label for="lab-test">Required Lab Test *</label>
+                  <input type="text" id="lab-test" class="form-control" placeholder="e.g. Blood Sugar, Blood Group, CBC" required>
+                </div>
+                <div class="form-group">
+                  <label for="lab-doctor">Referred By (Doctor Name)</label>
+                  <input type="text" id="lab-doctor" class="form-control" placeholder="Self-Referred / Dr. Name">
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Log Lab Intake</button>
+              </form>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Real-time Token Slip Preview Overlay -->
+  <div class="modal-backdrop" id="token-slip-modal">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-print"></i> Print OPD Slip</h3>
+        <button class="modal-close" id="btn-close-slip-modal">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 16px;">
+        <div class="token-slip-card" id="recep-print-slip-area">
+          <div style="font-weight: 700; font-size: 16px; color: var(--text-main);">
+            <i class="fa-solid fa-heart-pulse" style="color: var(--primary);"></i> MediOS Medical Center
+          </div>
+          <p style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">OPD Intake Receipt</p>
+          
+          <div class="token-slip-number" id="lbl-recep-slip-token">----</div>
+          
+          <div class="token-slip-meta">
+            <div>Patient Name: <span id="lbl-recep-slip-name">---</span></div>
+            <div>Age / Gender: <span id="lbl-recep-slip-age-gen">---</span></div>
+            <div>Aadhaar ID: <span id="lbl-recep-slip-aadhaar">---</span></div>
+            <div>Department: <span id="lbl-recep-slip-dept">---</span></div>
+            <div>Consulting Doctor: <span id="lbl-recep-slip-doctor">---</span></div>
+            <div>Est. Wait Queue: <span id="lbl-recep-slip-wait">---</span></div>
+            <div>Check-in Time: <span id="lbl-recep-slip-time">---</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-recep-print-action">
+          <i class="fa-solid fa-print"></i> Print Receipt
+        </button>
+        <button class="btn btn-primary" id="btn-recep-close-action">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Re-assign Doctor Modal -->
+  <div class="modal-backdrop" id="assign-doctor-modal">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fa-solid fa-user-doctor"></i> Assign Consulting Doctor</h3>
+        <button class="modal-close" id="btn-close-assign-modal">&times;</button>
+      </div>
+      <form id="recep-assign-doc-form">
+        <div class="modal-body">
+          <input type="hidden" id="assign-patient-id">
+          <div class="form-group">
+            <label for="assign-dept-name">Department</label>
+            <input type="text" id="assign-dept-name" class="form-control" disabled>
+          </div>
+          <div class="form-group">
+            <label for="assign-doctor-select">Choose Available Doctor</label>
+            <select id="assign-doctor-select" class="form-control" required>
+              <option value="" disabled selected>Loading Specialities...</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-assign-modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update Doctor Assignment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Print helper -->
+  <div id="print-slip" class="printable-slip"></div>
+
+  <!-- Loader Overlay -->
+  <div class="loading-overlay" id="recep-loader" style="display: none;">
+    <div style="text-align: center;">
+      <div class="spinner"></div>
+      <p style="margin-top: 16px; font-weight: 500; color: var(--text-main);" id="recep-loader-text">Loading...</p>
+    </div>
+  </div>
+
+  <!-- Script Modules -->
+  <script type="module">
+    import { checkAuthAndRole, logoutUser } from "./auth.js";
+    import { 
+      db, 
+      collection, 
+      doc, 
+      setDoc, 
+      getDocs, 
+      updateDoc, 
+      query, 
+      where, 
+      onSnapshot, 
+      serverTimestamp 
+    } from "./firebase.js";
+    import { showToast, calculateEstimatedWaitTime } from "./app.js";
+
+    let localPatients = [];
+    let localDepts = [];
+    let localDoctors = [];
+
+    const loader = document.getElementById("recep-loader");
+    const loaderText = document.getElementById("recep-loader-text");
+
+    function setLoader(show, text = "Loading...") {
+      loaderText.innerText = text;
+      loader.style.display = show ? "flex" : "none";
+    }
+
+    // Auth validation
+    setLoader(true, "Securing Front Desk Session...");
+    const loggedUser = await checkAuthAndRole(["receptionist"]);
+    if (loggedUser) {
+      document.getElementById("recep-name").innerText = loggedUser.name;
+      document.getElementById("recep-avatar").innerText = loggedUser.name.charAt(0).toUpperCase();
+      setLoader(false);
+    }
+
+    // Sign out action
+    document.getElementById("btn-recep-logout").addEventListener("click", async () => {
+      setLoader(true, "Signing out...");
+      await logoutUser();
+    });
+
+    // Tab Navigation Logic
+    const tabs = document.querySelectorAll(".sidebar-menu-item");
+    const sections = document.querySelectorAll(".dashboard-section");
+    const tabTitle = document.getElementById("recep-tab-title");
+
+    tabs.forEach(tab => {
+      tab.addEventListener("click", () => {
+        const target = tab.getAttribute("data-tab");
+        tabs.forEach(t => t.classList.remove("active"));
+        tab.classList.add("active");
+        sections.forEach(sec => {
+          sec.style.display = sec.id === target ? "block" : "none";
+        });
+        tabTitle.innerText = tab.innerText.trim();
+      });
+    });
+
+    // Slips print dialog handler
+    const slipModal = document.getElementById("token-slip-modal");
+    document.getElementById("btn-close-slip-modal").addEventListener("click", () => slipModal.classList.remove("active"));
+    document.getElementById("btn-recep-close-action").addEventListener("click", () => slipModal.classList.remove("active"));
+    
+    document.getElementById("btn-recep-print-action").addEventListener("click", () => {
+      const content = document.getElementById("recep-print-slip-area").innerHTML;
+      document.getElementById("print-slip").innerHTML = content;
+      window.print();
+    });
+
+    // Assign Doctor Modal actions
+    const assignModal = document.getElementById("assign-doctor-modal");
+    document.getElementById("btn-close-assign-modal").addEventListener("click", () => assignModal.classList.remove("active"));
+    document.getElementById("btn-cancel-assign-modal").addEventListener("click", () => assignModal.classList.remove("active"));
+
+    // Sync Data listeners
+    function startListeners() {
+      // 1. Departments
+      onSnapshot(collection(db, "departments"), (snapshot) => {
+        localDepts = [];
+        snapshot.forEach(d => localDepts.push({ id: d.id, ...d.data() }));
+        populateDeptsDropdown();
+      });
+
+      // 2. Doctors (to allow receptionist manual doctor assignment)
+      const qDocs = query(collection(db, "users"), where("role", "==", "doctor"));
+      onSnapshot(qDocs, (snapshot) => {
+        localDoctors = [];
+        snapshot.forEach(d => localDoctors.push({ id: d.id, ...d.data() }));
+      });
+
+      // 3. Patients (listen to today's patients)
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      
+      const qPatientsToday = query(collection(db, "patients"), where("createdAt", ">=", today));
+      
+      onSnapshot(qPatientsToday, (snapshot) => {
+        localPatients = [];
+        snapshot.forEach(p => localPatients.push({ id: p.id, ...p.data() }));
+        
+        renderQueueKPIs();
+        renderQueueTable();
+      });
+    }
+
+    startListeners();
+
+    // Populate drop downs
+    function populateDeptsDropdown() {
+      const select = document.getElementById("opd-dept");
+      select.innerHTML = `<option value="" disabled selected>Select Department</option>`;
+
+      if (localDepts.length === 0) {
+        const defaults = ["General Medicine", "Pediatrics", "Cardiology", "Orthopedics", "Dermatology"];
+        defaults.forEach(d => {
+          const opt = document.createElement("option");
+          opt.value = d;
+          opt.innerText = d;
+          select.appendChild(opt);
+        });
+      } else {
+        localDepts.forEach(d => {
+          const opt = document.createElement("option");
+          opt.value = d.name;
+          opt.innerText = d.name;
+          select.appendChild(opt);
+        });
+      }
+    }
+
+    // KPIs Calculations
+    function renderQueueKPIs() {
+      document.getElementById("kpi-recep-total").innerText = localPatients.length;
+      document.getElementById("kpi-recep-pending").innerText = localPatients.filter(p => p.status === "pending" || p.status === "in-consultation").length;
+      document.getElementById("kpi-recep-completed").innerText = localPatients.filter(p => p.status === "completed").length;
+    }
+
+    // Render Patients Queue Table
+    const searchField = document.getElementById("recep-queue-search");
+    const statusField = document.getElementById("recep-filter-status");
+    searchField.addEventListener("input", renderQueueTable);
+    statusField.addEventListener("change", renderQueueTable);
+
+    function renderQueueTable() {
+      const q = searchField.value.toLowerCase();
+      const status = statusField.value;
+
+      const tbody = document.getElementById("recep-queue-tbody");
+      tbody.innerHTML = "";
+
+      const filtered = localPatients.filter(p => {
+        const matchesQuery = p.name.toLowerCase().includes(q) || 
+                             p.phone.includes(q) || 
+                             p.aadhaar.includes(q) || 
+                             p.token.includes(q);
+        const matchesStatus = status === "all" || p.status === status;
+        return matchesQuery && matchesStatus;
+      });
+
+      // Sort by token number ascending (chronological order of registration)
+      filtered.sort((a, b) => parseInt(a.token) - parseInt(b.token));
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><i class="fa-solid fa-clipboard"></i><h4>No queue entries found</h4><p>Check search filters or register a walk-in patient.</p></td></tr>`;
+        return;
+      }
+
+      filtered.forEach(p => {
+        const tr = document.createElement("tr");
+
+        let statusClass = "badge-pending";
+        if (p.status === "completed") statusClass = "badge-completed";
+        if (p.status === "in-consultation") statusClass = "badge-in-consultation";
+        if (p.status === "cancelled") statusClass = "badge-cancelled";
+
+        tr.innerHTML = `
+          <td><strong>#${p.token}</strong></td>
+          <td>
+            <div style="font-weight: 600;">${p.name}</div>
+            <div style="font-size:12px; color:var(--text-muted);">${p.age} yrs / ${p.gender} | Ph: ${p.phone}</div>
+          </td>
+          <td>
+            <div style="font-weight: 500; font-size:13px;">${p.department}</div>
+            <div style="font-size:12px; color:var(--text-muted); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">"${p.symptoms}"</div>
+          </td>
+          <td>
+            <div style="font-size: 13px;">
+              <i class="fa-solid fa-user-doctor" style="color:var(--primary);"></i> ${p.assignedDoctorName}
+            </div>
+            ${p.status === 'pending' ? `
+              <button class="btn btn-secondary btn-xs btn-assign-doctor-trigger" data-id="${p.id}" data-dept="${p.department}" style="margin-top: 4px;">
+                Change Doctor
+              </button>
+            ` : ""}
+          </td>
+          <td><span class="badge ${statusClass}">${p.status.replace('-', ' ')}</span></td>
+          <td>
+            <div style="display:flex; gap:6px;">
+              <button class="btn btn-secondary btn-xs btn-print-slip-trigger" data-id="${p.id}">
+                <i class="fa-solid fa-print"></i> Slip
+              </button>
+              ${p.status === 'pending' || p.status === 'in-consultation' ? `
+                <button class="btn btn-danger btn-xs btn-cancel-opd" data-id="${p.id}">
+                  Cancel
+                </button>
+              ` : ""}
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Add actions event listeners
+      // 1. Print Slip Action
+      document.querySelectorAll(".btn-print-slip-trigger").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          const id = e.target.closest("button").dataset.id;
+          const patient = localPatients.find(p => p.id === id);
+          if (patient) {
+            // Calculate wait count
+            const doctorPendingCount = localPatients.filter(p => p.assignedDoctorId === patient.assignedDoctorId && p.status === "pending" && parseInt(p.token) < parseInt(patient.token)).length;
+            
+            document.getElementById("lbl-recep-slip-token").innerText = patient.token;
+            document.getElementById("lbl-recep-slip-name").innerText = patient.name;
+            document.getElementById("lbl-recep-slip-age-gen").innerText = `${patient.age} yrs / ${patient.gender}`;
+            document.getElementById("lbl-recep-slip-aadhaar").innerText = `XXXX-XXXX-${patient.aadhaar.slice(-4)}`;
+            document.getElementById("lbl-recep-slip-dept").innerText = patient.department;
+            document.getElementById("lbl-recep-slip-doctor").innerText = patient.assignedDoctorName;
+            document.getElementById("lbl-recep-slip-wait").innerText = calculateEstimatedWaitTime(doctorPendingCount);
+            
+            const time = patient.createdAt?.toDate ? patient.createdAt.toDate() : new Date();
+            document.getElementById("lbl-recep-slip-time").innerText = time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            slipModal.classList.add("active");
+          }
+        });
+      });
+
+      // 2. Doctor Assign Dialog Trigger
+      document.querySelectorAll(".btn-assign-doctor-trigger").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          const id = e.target.dataset.id;
+          const dept = e.target.dataset.dept;
+
+          document.getElementById("assign-patient-id").value = id;
+          document.getElementById("assign-dept-name").value = dept;
+
+          // Filter doctors in same dept
+          const matchingDocs = localDoctors.filter(d => d.specialization === dept);
+          const select = document.getElementById("assign-doctor-select");
+          select.innerHTML = `<option value="" disabled selected>Choose Doctor</option>`;
+
+          matchingDocs.forEach(d => {
+            const queueSize = localPatients.filter(p => p.assignedDoctorId === d.id && (p.status === "pending" || p.status === "in-consultation")).length;
+            const opt = document.createElement("option");
+            opt.value = `${d.id}|${d.name}`;
+            opt.innerText = `${d.name} (${d.availability}) - Queue: ${queueSize} patients`;
+            select.appendChild(opt);
+          });
+
+          assignModal.classList.add("active");
+        });
+      });
+
+      // 3. Cancel Action
+      document.querySelectorAll(".btn-cancel-opd").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+          const id = e.target.dataset.id;
+          if (confirm("Cancel this patient registration?")) {
+            setLoader(true, "Updating patient status...");
+            try {
+              await updateDoc(doc(db, "patients", id), { status: "cancelled" });
+              showToast("Patient registration cancelled.", "success");
+            } catch (err) {
+              console.error(err);
+              showToast("Failed to update status.", "error");
+            } finally {
+              setLoader(false);
+            }
+          }
+        });
+      });
+    }
+
+    // Submit Doctor Assign Update
+    document.getElementById("recep-assign-doc-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const patientId = document.getElementById("assign-patient-id").value;
+      const docSelectValue = document.getElementById("assign-doctor-select").value;
+
+      if (!docSelectValue) return;
+      const [doctorId, doctorName] = docSelectValue.split("|");
+
+      setLoader(true, "Assigning doctor...");
+      try {
+        await updateDoc(doc(db, "patients", patientId), {
+          assignedDoctorId: doctorId,
+          assignedDoctorName: doctorName
+        });
+        showToast("Consulting Doctor updated successfully.", "success");
+        assignModal.classList.remove("active");
+      } catch (err) {
+        console.error(err);
+        showToast("Failed to assign doctor.", "error");
+      } finally {
+        setLoader(false);
+      }
+    });
+
+    // Walk-in Registration intake form submission
+    document.getElementById("recep-opd-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      setLoader(true, "Registering patient...");
+
+      const name = document.getElementById("opd-name").value.trim();
+      const age = parseInt(document.getElementById("opd-age").value);
+      const gender = document.getElementById("opd-gender").value;
+      const aadhaar = document.getElementById("opd-aadhaar").value.trim();
+      const phone = document.getElementById("opd-phone").value.trim();
+      const email = document.getElementById("opd-email").value.trim();
+      const address = document.getElementById("opd-address").value.trim();
+      const district = document.getElementById("opd-district").value.trim();
+      const pin = document.getElementById("opd-pin").value.trim();
+      const department = document.getElementById("opd-dept").value;
+      const symptoms = document.getElementById("opd-symptoms").value.trim();
+
+      try {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
+        // Calculate token
+        const todayCount = localPatients.length;
+        const generatedToken = (1000 + todayCount + 1).toString();
+
+        // Load balance matching doctor
+        const matchingDoctors = localDoctors.filter(d => d.specialization === department && d.availability === "available");
+        
+        let assignedDoctorId = null;
+        let assignedDoctorName = null;
+
+        if (matchingDoctors.length > 0) {
+          const docActiveCounts = matchingDoctors.map(d => {
+            const queueCount = localPatients.filter(p => p.assignedDoctorId === d.id && (p.status === "pending" || p.status === "in-consultation")).length;
+            return { ...d, queueCount };
+          });
+          docActiveCounts.sort((a,b) => a.queueCount - b.queueCount);
+          assignedDoctorId = docActiveCounts[0].id;
+          assignedDoctorName = docActiveCounts[0].name;
+        }
+
+        const patientRef = doc(collection(db, "patients"));
+        await setDoc(patientRef, {
+          patientId: patientRef.id,
+          token: generatedToken,
+          name,
+          age,
+          gender,
+          aadhaar,
+          phone,
+          email,
+          address,
+          district,
+          pin,
+          department,
+          symptoms,
+          assignedDoctorId,
+          assignedDoctorName: assignedDoctorName || "No Doctor Assigned (Queueing)",
+          status: "pending",
+          createdAt: serverTimestamp()
+        });
+
+        showToast(`Registration Successful! Token issued: #${generatedToken}`, "success");
+        document.getElementById("recep-opd-form").reset();
+        populateDeptsDropdown();
+      } catch (err) {
+        console.error(err);
+        showToast("Error processing walk-in registration.", "error");
+      } finally {
+        setLoader(false);
+      }
+    });
+
+    // Walk-in Lab registration submission
+    document.getElementById("recep-lab-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      setLoader(true, "Saving lab registration details...");
+
+      const name = document.getElementById("lab-name").value.trim();
+      const phone = document.getElementById("lab-phone").value.trim();
+      const testName = document.getElementById("lab-test").value.trim();
+      const referredBy = document.getElementById("lab-doctor").value.trim() || "Self";
+
+      try {
+        const labRef = doc(collection(db, "labTests"));
+        await setDoc(labRef, {
+          testId: labRef.id,
+          patientName: name,
+          phone,
+          testName,
+          referredBy,
+          status: "pending",
+          createdAt: serverTimestamp()
+        });
+
+        showToast("Lab test logged successfully.", "success");
+        document.getElementById("recep-lab-form").reset();
+      } catch (err) {
+        console.error(err);
+        showToast("Error saving lab request.", "error");
+      } finally {
+        setLoader(false);
+      }
+    });
+
+  </script>
+</body>
+</html>
