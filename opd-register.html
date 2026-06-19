@@ -135,6 +135,7 @@
             <select id="pat-dept" class="form-control" required>
               <option value="" disabled selected>Loading Clinical Departments...</option>
             </select>
+            <div id="assigned-doctor-preview" style="margin-top: 8px; font-size: 13px; font-weight: 500; display: none; padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border); background-color: var(--bg-main);"></div>
           </div>
 
           <div class="form-group">
@@ -263,11 +264,13 @@
       successModal.classList.remove("active");
       form.reset();
       resetCaptcha();
+      document.getElementById("assigned-doctor-preview").style.display = "none";
     });
     document.getElementById("btn-close-modal").addEventListener("click", () => {
       successModal.classList.remove("active");
       form.reset();
       resetCaptcha();
+      document.getElementById("assigned-doctor-preview").style.display = "none";
     });
 
     // Print Token action
@@ -331,6 +334,81 @@
       }
     }
     loadDepartments();
+
+    async function updateAssignedDoctorPreview(department) {
+      const previewDiv = document.getElementById("assigned-doctor-preview");
+      if (!department) {
+        previewDiv.style.display = "none";
+        return;
+      }
+
+      previewDiv.style.display = "block";
+      previewDiv.innerHTML = `<span style="color: var(--text-muted);"><i class="fa-solid fa-spinner fa-spin"></i> Checking doctor availability...</span>`;
+
+      try {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+
+        // Fetch available doctors in the department
+        const qDoctors = query(
+          collection(db, "users"),
+          where("role", "==", "doctor"),
+          where("specialization", "==", department),
+          where("availability", "==", "available")
+        );
+        const doctorsSnap = await getDocs(qDoctors);
+
+        if (doctorsSnap.empty) {
+          previewDiv.innerHTML = `<span style="color: var(--warning-text);"><i class="fa-solid fa-triangle-exclamation"></i> No doctor currently available in this department.</span>`;
+          return;
+        }
+
+        const doctorsQueueInfo = [];
+        doctorsSnap.forEach(docSnap => {
+          doctorsQueueInfo.push({
+            id: docSnap.id,
+            name: docSnap.data().name,
+            queueCount: 0
+          });
+        });
+
+        // Fetch today's active patients to count queues
+        const qActivePatients = query(
+          collection(db, "patients"),
+          where("createdAt", ">=", today)
+        );
+        const activePatientsSnap = await getDocs(qActivePatients);
+
+        activePatientsSnap.forEach(patSnap => {
+          const patData = patSnap.data();
+          if (patData.status === "pending" || patData.status === "in-consultation") {
+            const doctorMatch = doctorsQueueInfo.find(doc => doc.id === patData.assignedDoctorId);
+            if (doctorMatch) {
+              doctorMatch.queueCount++;
+            }
+          }
+        });
+
+        // Filter out doctors who have already reached 5 patients (since they will be set to busy)
+        const availableDoctorsWithCapacity = doctorsQueueInfo.filter(d => d.queueCount < 5);
+
+        if (availableDoctorsWithCapacity.length > 0) {
+          // Sort by lowest queue size
+          availableDoctorsWithCapacity.sort((a, b) => a.queueCount - b.queueCount);
+          const chosenDoc = availableDoctorsWithCapacity[0];
+          previewDiv.innerHTML = `<span style="color: var(--success);"><i class="fa-solid fa-user-doctor"></i> Assigned Doctor: <strong>Dr. ${chosenDoc.name}</strong> (Queue: ${chosenDoc.queueCount} patients pending)</span>`;
+        } else {
+          previewDiv.innerHTML = `<span style="color: var(--warning-text);"><i class="fa-solid fa-triangle-exclamation"></i> All doctors in this department are currently busy. You will be queued.</span>`;
+        }
+      } catch (err) {
+        console.error("Error previewing doctor:", err);
+        previewDiv.innerHTML = `<span style="color: var(--warning-text);"><i class="fa-solid fa-triangle-exclamation"></i> Error checking doctor availability.</span>`;
+      }
+    }
+
+    deptSelect.addEventListener("change", () => {
+      updateAssignedDoctorPreview(deptSelect.value);
+    });
 
     // Handle Form Submission
     form.addEventListener("submit", async (e) => {
@@ -430,81 +508,3 @@
             if (dInfo.queueCount >= 5) {
               try {
                 await updateDoc(doc(db, "users", dInfo.id), { availability: "busy" });
-                showToast(`Dr. ${dInfo.name} is now flagged as BUSY (Queue reached limit).`, "info");
-              } catch (err) {
-                console.error("Error setting doctor to busy:", err);
-              }
-            } else {
-              availableDoctorsWithCapacity.push(dInfo);
-            }
-          }
-
-          if (availableDoctorsWithCapacity.length > 0) {
-            // Sort by lowest queue size (load balancing) among those with capacity
-            availableDoctorsWithCapacity.sort((a, b) => a.queueCount - b.queueCount);
-            assignedDoctorId = availableDoctorsWithCapacity[0].id;
-            assignedDoctorName = availableDoctorsWithCapacity[0].name;
-            pendingQueueCount = availableDoctorsWithCapacity[0].queueCount;
-
-            // If the assigned doctor reaches 5 patients with this new assignment, flag them as 'busy' in Firestore
-            if (pendingQueueCount + 1 >= 5) {
-              try {
-                await updateDoc(doc(db, "users", assignedDoctorId), { availability: "busy" });
-                showToast(`Dr. ${assignedDoctorName} is now flagged as BUSY (Queue reached limit).`, "info");
-              } catch (err) {
-                console.error("Error setting doctor to busy:", err);
-              }
-            }
-          }
-        }
-
-        // 3. Write Patient to Firestore with dynamic reference doc id
-        const newPatientRef = doc(collection(db, "patients"));
-        const patientId = newPatientRef.id;
-
-        const newPatientData = {
-          patientId,
-          token: generatedToken,
-          name,
-          dob,
-          age,
-          gender,
-          aadhaar,
-          phone,
-          email,
-          address,
-          state,
-          pin,
-          department,
-          symptoms,
-          assignedDoctorId,
-          assignedDoctorName: assignedDoctorName || "No Doctor Assigned (Queueing)",
-          status: "pending",
-          createdAt: serverTimestamp()
-        };
-
-        await setDoc(newPatientRef, newPatientData);
-
-        // Update Success Slip UI
-        slipToken.innerText = generatedToken;
-        slipName.innerText = name;
-        slipAgeGen.innerText = `${age} yrs / ${gender}`;
-        slipAadhaar.innerText = `XXXX-XXXX-${aadhaar.slice(-4)}`;
-        slipState.innerText = state;
-        slipDept.innerText = department;
-        slipDoctor.innerText = assignedDoctorName || "Waiting for Assignment";
-        slipWait.innerText = calculateEstimatedWaitTime(pendingQueueCount);
-        slipTime.innerText = new Date().toLocaleString();
-
-        showToast("OPD Registration Successful!", "success");
-        successModal.classList.add("active");
-      } catch (err) {
-        console.error("Error during OPD registration:", err);
-        showToast("Failed to register patient. Please contact support.", "error");
-      } finally {
-        loadingOverlay.style.display = "none";
-      }
-    });
-  </script>
-</body>
-</html>
