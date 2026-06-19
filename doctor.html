@@ -67,7 +67,7 @@
                 <div class="card-header"><span class="card-title"><i class="fa-solid fa-magnifying-glass"></i> Search Patient Token</span></div>
                 <div class="card-body" style="padding: 16px;">
                   <form id="doc-token-search-form" style="display: flex; gap: 12px;">
-                    <input type="text" id="doc-search-token-input" class="form-control" placeholder="Enter 4-digit OPD token (e.g. 1001)" required>
+                    <input type="text" id="doc-search-token-input" class="form-control" placeholder="Enter 3-digit OPD token (e.g. 123)" required>
                     <button type="submit" class="btn btn-primary">Search</button>
                   </form>
                 </div>
@@ -83,7 +83,7 @@
                   <div style="font-size: 14px; color: var(--text-muted); margin-top: 8px; margin-bottom: 20px;">Patients Waiting in Speciality</div>
                   
                   <div style="background-color: var(--primary-light); border: 1px dashed rgba(56, 189, 248, 0.2); border-radius: var(--radius-sm); padding: 12px; font-size: 13px; color: var(--text-main); text-align: left;">
-                    <i class="fa-solid fa-circle-info" style="color: var(--primary);"></i> <strong>Verification Step:</strong> To consult a patient, ask them for their 4-digit OPD Token, enter it in the search bar above, and click Search to fetch their file.
+                    <i class="fa-solid fa-circle-info" style="color: var(--primary);"></i> <strong>Verification Step:</strong> To consult a patient, ask them for their 3-digit OPD Token, enter it in the search bar above, and click Search to fetch their file.
                   </div>
                 </div>
               </div>
@@ -460,6 +460,34 @@
         await updateDoc(patientRef, updateData);
 
         showToast(`Consultation for token #${selectedPatient.token} completed.`, "success");
+
+        // Evaluate remaining patient queue to dynamically reset doctor state to 'available' if capacity opens up
+        try {
+          const todayVal = new Date();
+          todayVal.setHours(0,0,0,0);
+          
+          const qRemaining = query(
+            collection(db, "patients"),
+            where("assignedDoctorId", "==", activeDoctorId)
+          );
+          const remainingSnap = await getDocs(qRemaining);
+          let activeCount = 0;
+          remainingSnap.forEach(patSnap => {
+            const patData = patSnap.data();
+            const createdTime = patData.createdAt ? (patData.createdAt.toDate ? patData.createdAt.toDate() : new Date(patData.createdAt)) : null;
+            if (createdTime && createdTime >= todayVal && (patData.status === "pending" || patData.status === "in-consultation")) {
+              if (patSnap.id !== selectedPatient.id) {
+                activeCount++;
+              }
+            }
+          });
+
+          if (activeCount < 5) {
+            await updateDoc(doc(db, "users", activeDoctorId), { availability: "available" });
+          }
+        } catch (err) {
+          console.error("Error restoring doctor availability:", err);
+        }
         
         // Populate Prescription Slip UI
         document.getElementById("lbl-presc-doc-name").innerText = activeDoctorName;
