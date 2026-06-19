@@ -621,6 +621,18 @@
           assignedDoctorId: doctorId,
           assignedDoctorName: doctorName
         });
+
+        // If the assigned doctor reaches 5 active patients, flag them as 'busy' in Firestore
+        const doctorActiveCount = localPatients.filter(p => p.assignedDoctorId === doctorId && (p.status === "pending" || p.status === "in-consultation")).length;
+        if (doctorActiveCount >= 5) {
+          try {
+            await updateDoc(doc(db, "users", doctorId), { availability: "busy" });
+            showToast(`Dr. ${doctorName} is now flagged as BUSY (Queue reached limit).`, "info");
+          } catch (err) {
+            console.error("Error setting doctor to busy:", err);
+          }
+        }
+
         showToast("Consulting Doctor updated successfully.", "success");
         assignModal.classList.remove("active");
       } catch (err) {
@@ -652,24 +664,73 @@
         const today = new Date();
         today.setHours(0,0,0,0);
 
-        // Calculate token
-        const todayCount = localPatients.length;
-        const generatedToken = (1000 + todayCount + 1).toString();
+        // 1. Generate 3-digit non-sequential unique token (100-999)
+        let generatedToken = "";
+        let isUnique = false;
+        let attempts = 0;
+        while (!isUnique && attempts < 50) {
+          const randNum = Math.floor(Math.random() * 900) + 100; // 100 to 999
+          const candToken = randNum.toString();
+          const exists = localPatients.some(p => p.token === candToken);
+          if (!exists) {
+            generatedToken = candToken;
+            isUnique = true;
+          }
+          attempts++;
+        }
+        if (!isUnique) {
+          generatedToken = (Math.floor(Math.random() * 900) + 100).toString();
+        }
 
-        // Load balance matching doctor
+        // 2. Load balance matching doctor with capacity limit checking
         const matchingDoctors = localDoctors.filter(d => d.specialization === department && d.availability === "available");
         
         let assignedDoctorId = null;
         let assignedDoctorName = null;
+        let pendingQueueCount = 0;
 
         if (matchingDoctors.length > 0) {
-          const docActiveCounts = matchingDoctors.map(d => {
+          const doctorsQueueInfo = matchingDoctors.map(d => {
             const queueCount = localPatients.filter(p => p.assignedDoctorId === d.id && (p.status === "pending" || p.status === "in-consultation")).length;
-            return { ...d, queueCount };
+            return {
+              id: d.id,
+              name: d.name,
+              queueCount
+            };
           });
-          docActiveCounts.sort((a,b) => a.queueCount - b.queueCount);
-          assignedDoctorId = docActiveCounts[0].id;
-          assignedDoctorName = docActiveCounts[0].name;
+
+          // Check if any doctor has reached or exceeded 5 active patients. If so, flag them as 'busy' in Firestore.
+          const availableDoctorsWithCapacity = [];
+          for (const dInfo of doctorsQueueInfo) {
+            if (dInfo.queueCount >= 5) {
+              try {
+                await updateDoc(doc(db, "users", dInfo.id), { availability: "busy" });
+                showToast(`Dr. ${dInfo.name} is now flagged as BUSY (Queue reached limit).`, "info");
+              } catch (err) {
+                console.error("Error setting doctor to busy:", err);
+              }
+            } else {
+              availableDoctorsWithCapacity.push(dInfo);
+            }
+          }
+
+          if (availableDoctorsWithCapacity.length > 0) {
+            // Sort by lowest queue size (load balancing) among those with capacity
+            availableDoctorsWithCapacity.sort((a, b) => a.queueCount - b.queueCount);
+            assignedDoctorId = availableDoctorsWithCapacity[0].id;
+            assignedDoctorName = availableDoctorsWithCapacity[0].name;
+            pendingQueueCount = availableDoctorsWithCapacity[0].queueCount;
+
+            // If the assigned doctor reaches 5 patients with this new assignment, flag them as 'busy' in Firestore
+            if (pendingQueueCount + 1 >= 5) {
+              try {
+                await updateDoc(doc(db, "users", assignedDoctorId), { availability: "busy" });
+                showToast(`Dr. ${assignedDoctorName} is now flagged as BUSY (Queue reached limit).`, "info");
+              } catch (err) {
+                console.error("Error setting doctor to busy:", err);
+              }
+            }
+          }
         }
 
         const patientRef = doc(collection(db, "patients"));
@@ -694,6 +755,21 @@
         });
 
         showToast(`Registration Successful! Token issued: #${generatedToken}`, "success");
+        
+        // Populate and open token slip modal for printing
+        document.getElementById("lbl-recep-slip-token").innerText = generatedToken;
+        document.getElementById("lbl-recep-slip-name").innerText = name;
+        document.getElementById("lbl-recep-slip-age-gen").innerText = `${age} yrs / ${gender}`;
+        document.getElementById("lbl-recep-slip-aadhaar").innerText = `XXXX-XXXX-${aadhaar.slice(-4)}`;
+        document.getElementById("lbl-recep-slip-dept").innerText = department;
+        document.getElementById("lbl-recep-slip-doctor").innerText = assignedDoctorName || "Waiting for Assignment";
+        document.getElementById("lbl-recep-slip-wait").innerText = calculateEstimatedWaitTime(pendingQueueCount);
+        
+        const time = new Date();
+        document.getElementById("lbl-recep-slip-time").innerText = time.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+        slipModal.classList.add("active");
+
         document.getElementById("recep-opd-form").reset();
         populateDeptsDropdown();
       } catch (err) {
