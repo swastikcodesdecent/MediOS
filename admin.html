@@ -399,6 +399,7 @@
             <select id="m-pat-dept" class="form-control" required>
               <!-- populated -->
             </select>
+            <div id="admin-assigned-doctor-preview" style="margin-top: 8px; font-size: 13px; font-weight: 500; display: none; padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border); background-color: var(--bg-main);"></div>
           </div>
 
           <div class="form-group">
@@ -517,9 +518,57 @@
     function closePatientModal() {
       patientModal.classList.remove("active");
       document.getElementById("modal-patient-form").reset();
+      document.getElementById("admin-assigned-doctor-preview").style.display = "none";
     }
     document.getElementById("btn-close-pat-modal").addEventListener("click", closePatientModal);
     document.getElementById("btn-cancel-pat-modal").addEventListener("click", closePatientModal);
+
+    function updateAdminAssignedDoctorPreview(department) {
+      const previewDiv = document.getElementById("admin-assigned-doctor-preview");
+      if (!department) {
+        previewDiv.style.display = "none";
+        return;
+      }
+
+      previewDiv.style.display = "block";
+
+      const departmentDoctors = localStaff.filter(s => s.role === "doctor" && s.specialization === department && s.availability === "available");
+
+      if (departmentDoctors.length === 0) {
+        previewDiv.innerHTML = `<span style="color: var(--warning-text);"><i class="fa-solid fa-triangle-exclamation"></i> No doctor currently available in this department.</span>`;
+        return;
+      }
+
+      const today = new Date();
+      today.setHours(0,0,0,0);
+
+      const doctorsQueueInfo = departmentDoctors.map(d => {
+        const queueCount = localPatients.filter(p => {
+          const t = p.createdAt?.toDate ? p.createdAt.toDate() : new Date(p.createdAt);
+          return t >= today && p.assignedDoctorId === d.id && (p.status === "pending" || p.status === "in-consultation");
+        }).length;
+        return {
+          id: d.id,
+          name: d.name,
+          queueCount
+        };
+      });
+
+      // Filter out doctors who have already reached 5 patients
+      const availableDoctorsWithCapacity = doctorsQueueInfo.filter(d => d.queueCount < 5);
+
+      if (availableDoctorsWithCapacity.length > 0) {
+        availableDoctorsWithCapacity.sort((a, b) => a.queueCount - b.queueCount);
+        const chosenDoc = availableDoctorsWithCapacity[0];
+        previewDiv.innerHTML = `<span style="color: var(--success);"><i class="fa-solid fa-user-doctor"></i> Assigned Doctor: <strong>Dr. ${chosenDoc.name}</strong> (Queue: ${chosenDoc.queueCount} patients pending)</span>`;
+      } else {
+        previewDiv.innerHTML = `<span style="color: var(--warning-text);"><i class="fa-solid fa-triangle-exclamation"></i> All doctors in this department are currently busy. You will be queued.</span>`;
+      }
+    }
+
+    document.getElementById("m-pat-dept").addEventListener("change", (e) => {
+      updateAdminAssignedDoctorPreview(e.target.value);
+    });
 
     // Initialize Real-time onSnapshot listeners
     function startSyncListeners() {
@@ -543,6 +592,11 @@
         });
         renderStaffTable();
         renderCharts();
+
+        const activeDept = document.getElementById("m-pat-dept").value;
+        if (activeDept) {
+          updateAdminAssignedDoctorPreview(activeDept);
+        }
       });
 
       // 3. Listen to Patients
@@ -554,6 +608,11 @@
         renderOverviewKPIs();
         renderPatientsTable();
         renderCharts();
+
+        const activeDept = document.getElementById("m-pat-dept").value;
+        if (activeDept) {
+          updateAdminAssignedDoctorPreview(activeDept);
+        }
       });
 
       // 4. Listen to Lab Tests
